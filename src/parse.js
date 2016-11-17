@@ -21,7 +21,10 @@ Lexer.prototype.lex = function(text) {//tokenization
 
 	while(this.index < this.text.length) {
 		this.ch = this.text.charAt(this.index);
-		if(this.isNumber() || (this.isDot() && this.isNumber(this.peek())) ) { //(this.isDot() && this.isNumber(this.peek())
+		if(this.isNumber() ||
+			(this.isDot() && this.isNumber(this.peek())) 
+			// || (this.isPlusMinus() && this.isNumber(this.peek())) 
+		){ 
 			this.readNumber();
 		} else if (this.isWhiteSpace()) {
 			this.index++;
@@ -46,7 +49,11 @@ Lexer.prototype.isNumber = function(char) {
 		ch = char;
 	}
 	return (ch >= '0' && ch <= '9');
+};
 
+Lexer.prototype.isPlusMinus = function() {
+	var ch = this.ch;
+	return (ch === '+' || ch === '-');
 };
 
 Lexer.prototype.isWhiteSpace = function() {
@@ -59,24 +66,49 @@ Lexer.prototype.isDot = function() {
 	return (ch === '.');
 };
 
+Lexer.prototype.isScientificSymbol = function() {
+	var ch = this.ch;
+	return (ch === 'e' || ch === 'E') ;
+};
+
+Lexer.prototype.inc = function() {
+	this.index++;
+	this.ch = this.text.charAt(this.index);
+};
+
 Lexer.prototype.readNumber = function() {
 	var number = [];
 	var dotFlag = false;//prevents reading something like that: 12.45.24.4 - this is not a float
+	var scientific = false;//setted when 'e' or 'E' readed
+	var self = this;
+	function add() {
+		number.push(self.ch);
+		self.index++;
+		self.ch = self.text.charAt(self.index);
+	}
+
 
 	while(this.index < this.text.length) {
-		this.ch = this.text.charAt(this.index);
-		if(this.isDot()) {
+		if(this.isDot() && !scientific) { //!scienticif means not something like this: 4e0.23
 			if(!dotFlag) {
 				dotFlag = true;
-				number.push(this.ch);
-				this.index++;
+				add();
 			} else {
 				break;
 			}
-		}
-		else if(this.isNumber()) {
-			number.push(this.ch);
-			this.index++;
+		} else if (this.isScientificSymbol()) {
+			if(!scientific) {
+				scientific = true;
+				add();
+				if(this.isPlusMinus()) {
+					add();
+				}
+			} else {
+				break;
+			}
+			
+		} else if(this.isNumber()) {
+			add();
 		} else {
 			break;
 		}

@@ -36,4 +36,21 @@ describe("parse", function(){
 		// 	console.log(e);
 		// }
 	});
+
+	it('can parse a scientific notation', function() {
+		var fn = parse('.25e2');
+		expect(fn()).toBe(25);
+
+		// try {
+		// 	console.log(new Lexer().lex('.35e2 34e2 25E3 45e+3 .45e+2 25e-2 25e1.2'));
+		// } catch (e) {
+		// 	console.log(e);
+		// } //ciekawy jest ostatni przypadek, tj: 25e1.2 - odczyta jako 250 i 0.2
+	});
+
+	// it('can parse negative integer', function() {
+	// 	var fn = parse('-25');
+	// 	expect(fn).toBeDefined();
+	// 	expect(fn()).toBe(-25);
+	// });
 });
