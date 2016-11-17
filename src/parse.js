@@ -18,9 +18,10 @@ Lexer.prototype.lex = function(text) {//tokenization
 	this.index = 0;
 	this.ch = null;
 	this.tokens = []; //tokeny postaci np: {text: '39', value: 39}
+
 	while(this.index < this.text.length) {
 		this.ch = this.text.charAt(this.index);
-		if(this.isNumber()) {
+		if(this.isNumber() || (this.isDot() && this.isNumber(this.peek())) ) { //(this.isDot() && this.isNumber(this.peek())
 			this.readNumber();
 		} else if (this.isWhiteSpace()) {
 			this.index++;
@@ -32,8 +33,20 @@ Lexer.prototype.lex = function(text) {//tokenization
 	return this.tokens;
 };
 
-Lexer.prototype.isNumber = function() {
-	return (this.ch >= '0' && this.ch <= '9');
+//get char in text at position index+1, if exists, or null otherwise
+Lexer.prototype.peek = function() {
+	return this.index < this.text.length-1 ? this.text.charAt(this.index+1) : null;
+};
+
+Lexer.prototype.isNumber = function(char) {
+	var ch;
+	if(typeof char === 'undefined') {
+		ch = this.ch;
+	} else {
+		ch = char;
+	}
+	return (ch >= '0' && ch <= '9');
+
 };
 
 Lexer.prototype.isWhiteSpace = function() {
@@ -41,15 +54,33 @@ Lexer.prototype.isWhiteSpace = function() {
 	return (ch === ' ');
 };
 
+Lexer.prototype.isDot = function() {
+	var ch = this.ch;
+	return (ch === '.');
+};
+
 Lexer.prototype.readNumber = function() {
 	var number = [];
+	var dotFlag = false;//prevents reading something like that: 12.45.24.4 - this is not a float
+
 	while(this.index < this.text.length) {
 		this.ch = this.text.charAt(this.index);
-		if(!this.isNumber()) {
+		if(this.isDot()) {
+			if(!dotFlag) {
+				dotFlag = true;
+				number.push(this.ch);
+				this.index++;
+			} else {
+				break;
+			}
+		}
+		else if(this.isNumber()) {
+			number.push(this.ch);
+			this.index++;
+		} else {
 			break;
 		}
-		number.push(this.ch);
-		this.index++;
+		
 	}
 	number = number.join('');
 	this.tokens.push({
@@ -57,6 +88,7 @@ Lexer.prototype.readNumber = function() {
 		value: Number(number)
 	});
 };
+
 
 //-------------------- AST
 function AST(lexer) {
@@ -88,9 +120,9 @@ function ASTCompiler(ast) {
 }
 
 ASTCompiler.prototype.compile = function(text) {
-	var ast = this.ast.build(text);
+	var ast = this.ast.build(text);//buduje drzewo ast
 	this.state = {body: []};
-	this.recurse(ast);
+	this.recurse(ast);//przchodzi po drzewie ast, ktore jest juz zbudowane i tworzy z niego funkcję, tj kompiluje drzewo
 
 	/* jshint -W054 */
 	return new Function(this.state.body.join(''));
