@@ -53,4 +53,124 @@ describe("parse", function(){
 	// 	expect(fn).toBeDefined();
 	// 	expect(fn()).toBe(-25);
 	// });
+
+	it('can parse strings in double quotes', function() {
+		var fn = parse('"hello world"');
+		expect(fn()).toBe('hello world');
+		// try {
+		// 	console.log(new Lexer().lex('"hello world 23 45"'));
+		// } catch (e) {
+		// 	console.log(e);
+		// }
+	});
+
+	it('can parse strings in single quotes', function() {
+		var fn = parse("'hello world'");
+		expect(fn()).toBe('hello world');
+	});
+
+	it('can parse strings in special cases', function() {
+		var fn = parse("'hello world 1234 !@#$%^&*()'");
+		expect(fn()).toBe('hello world 1234 !@#$%^&*()');
+
+		// try {
+		// 	console.log(new Lexer().lex('"hello world 1234 !@#$%^&*(),<>/?" 23.5 .5'));
+		// } catch (e) {
+		// 	console.log(e);
+		// }
+	});
+
+	it('can parse string escape characters', function() {
+		var a = 'ala\\nma';
+		try {
+			var fn = parse("'" + a +"'");
+			expect(fn()).toEqual("ala\nma");
+			// console.log(fn());
+		} catch (e) {
+			console.log(e);
+		}
+
+		// var lex;
+		// try {
+		// 	lex = new Lexer();
+		// 	lex.lex("'a\nb'");
+		// 	console.log(lex.tokens);
+		// } catch (e) {
+		// 	console.log(e, lex.tokens);
+		// }
+	});
+
+	it('can parse string escape characters', function() {
+		var a = 'ala\\\'ma';
+		try {
+			var fn = parse("'" + a +"'");
+			expect(fn()).toEqual("ala\'ma");
+			// console.log(fn());
+		} catch (e) {
+			console.log(e);
+		}
+	});
+
+	it('can parse string escape characters', function() {
+		var a = 'ala\\\"ma\"';
+		try {
+			var fn = parse("'" + a +"'");
+			expect(fn()).toEqual("ala\"ma\"");
+			// console.log(fn());
+		} catch (e) {
+			console.log(e);
+		}
+	});
+
+	it('can parse string special cases like \\n', function() {
+		var a = 'ala\nma\nkota';
+		try {
+			var fn = parse("'" + a +"'");
+			expect(fn()).toEqual("ala\nma\nkota");
+			// console.log(fn());
+		} catch (e) {
+			console.log(e);
+		}
+	});
+
+	it('can parse string with wrong escape characters like \\c \\d \\e etc and treats them like normal characters', function() {
+		var a = '\\ala ma \\kota';
+		try {
+			var fn = parse("'" + a +"'");
+			expect(fn()).toEqual("ala ma kota");
+			// console.log(fn());
+		} catch (e) {
+			console.log(e);
+		}
+	});
+
+	it('will not parse string with missmatching quotes', function() {
+		expect(function(){parse("'ala\"")}).toThrow();
+	});
+
+
+	it('can parse unicode characters', function() {
+		var a = 'ala\\u000ama';
+		try {
+			var fn = parse("'" + a +"'");
+			expect(fn()).toEqual("ala\nma");
+			// console.log(fn());
+		} catch (e) {
+			console.log(e);
+		}
+	});
+
+	it('will not parse string with invalid unicode escapes', function() {
+		expect(function(){parse("'\\u00MK'")}).toThrow();
+
+		// var lex;
+		// try {
+		// 	lex = new Lexer();
+		// 	lex.lex("'\\u0001'");
+		// 	console.log(lex.tokens);
+		// } catch (e) {
+		// 	console.log(e, lex.tokens);
+		// }
+	});
+
 });
