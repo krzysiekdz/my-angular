@@ -173,4 +173,25 @@ describe("parse", function(){
 		// }
 	});
 
+	it('will parse null', function() {
+		expect(parse('null')()).toEqual(null);
+		
+		// var lex;
+		// try {
+		// 	lex = new Lexer();
+		// 	lex.lex("2$false_@23 23");
+		// 	console.log(lex.tokens);
+		// } catch (e) {
+		// 	console.log(e, lex.tokens);
+		// }
+	});
+
+	it('will parse true', function() {
+		expect(parse('true')()).toBe(true);
+	});
+
+	it('will parse false', function() {
+		expect(parse('false')()).toBe(false);
+	});
+
 });

@@ -30,13 +30,14 @@ Lexer.prototype.lex = function(text) {//tokenization
 
 		if(this.isNumber() ||
 			(this.isDot() && this.isNumber(this.peek())) //somtehing like this: .25
-			// || (this.isPlusMinus() && this.isNumber(this.peek())) 
 		){ 
 			this.readNumber();
 		} else if (this.isWhiteSpace()) {
 			this.index++;
 		} else if (this.isQuote()) {
 			this.readString();
+		} else if(this.isIdentStart()) {
+			this.readIdent();
 		}
 		else {
 			throw 'unexpected character in expression: ' + this.ch;
@@ -157,6 +158,27 @@ Lexer.prototype.readString = function() {
 	
 };
 
+Lexer.prototype.readIdent = function() {
+	var ident = [];
+	var identRegex = /[a-zA-Z0-9$_]/;
+
+	ident.push(this.ch);
+
+	while(this.index < this.text.length) {
+		this.inc();
+		if(identRegex.test(this.ch)) {
+			ident.push(this.ch);
+		} else {
+			break;
+		}
+	}
+
+	ident = ident.join('');
+	this.tokens.push({
+		text: ident,
+	});
+};
+
 //--------- lexer isSomething functions
 
 Lexer.prototype.isNumber = function(char) {
@@ -176,7 +198,7 @@ Lexer.prototype.isPlusMinus = function() {
 
 Lexer.prototype.isWhiteSpace = function() {
 	var ch = this.ch;
-	return (ch === ' ');
+	return (ch === ' ' || ch === '\n' || ch === '\t' || ch === '\r' || ch === '\v' || ch === '\f');
 };
 
 Lexer.prototype.isDot = function() {
@@ -204,6 +226,11 @@ Lexer.prototype.isCharacter = function() {
 	return (ch >= 'a' && ch <= 'z');
 };
 
+Lexer.prototype.isIdentStart = function() {
+	var identRegex = /[a-zA-Z$_]/;
+	return identRegex.test(this.ch);
+};
+
 //--------------------
 
 //-------------------- AST
@@ -214,6 +241,13 @@ function AST(lexer) {
 //types of ast nodes
 AST.Program = 'Program';
 AST.Literal = 'Literal';
+AST.Ident = 'Identifier';
+
+AST.prototype.constants = {
+	'true' : {type: AST.Literal, value: true},
+	'false' : {type: AST.Literal, value: false},
+	'null' : {type: AST.Literal, value: null},
+};
 
 AST.prototype.build = function(text) {//ast building
 	this.tokens = this.lexer.lex(text);
@@ -222,14 +256,20 @@ AST.prototype.build = function(text) {//ast building
 
 //methods that creates AST nodes
 AST.prototype.program = function() {
-	return {type: AST.Program, body: this.constant()};
+	return {type: AST.Program, body: this.primary()};
+};
+
+AST.prototype.primary = function() {
+	var token = this.tokens[0];
+	if(this.constants.hasOwnProperty(token.text)) {
+		console.log('token.text = ', token.text, this.constants[token.text]);
+		return this.constants[token.text];
+	} else {
+		return this.constant();	
+	}
 };
 
 AST.prototype.constant = function() {
-	return {type: AST.Literal, value: this.tokens[0].value};
-};
-
-AST.prototype.string = function() {
 	return {type: AST.Literal, value: this.tokens[0].value};
 };
 
@@ -244,6 +284,7 @@ ASTCompiler.prototype.compile = function(text) {
 	this.state = {body: []};
 	this.recurse(ast);//przchodzi po drzewie ast, ktore jest juz zbudowane i tworzy z niego funkcję, tj kompiluje drzewo
 
+	console.log(this.state.body.join(''));
 	/* jshint -W054 */
 	return new Function(this.state.body.join(''));
 	/* jshint +W054 */
@@ -262,6 +303,8 @@ ASTCompiler.prototype.recurse = function(ast) {
 ASTCompiler.prototype.escape = function(value) {
 	if(_.isString(value)) {
 		return '\'' + value + '\'';
+	} else if(value === null) {
+		return 'null';
 	} else {
 		return value;
 	}
