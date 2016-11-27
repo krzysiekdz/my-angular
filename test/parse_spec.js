@@ -175,7 +175,7 @@ describe("parse", function(){
 
 	it('will parse null', function() {
 		expect(parse('null')()).toEqual(null);
-		
+
 		// var lex;
 		// try {
 		// 	lex = new Lexer();
@@ -192,6 +192,30 @@ describe("parse", function(){
 
 	it('will parse false', function() {
 		expect(parse('false')()).toBe(false);
+	});
+
+	it('will parse empty array []', function() {
+		expect(parse('[]')()).toEqual([]);
+		// var fn = parse('[]');
+		// console.log(fn());
+
+		// var tokens;
+		// try {
+		// 	ast = new AST(new Lexer());
+		// 	tokens = ast.build("[]");
+		// 	console.log(tokens);
+		// } catch (e) {
+		// 	console.log(e, tokens);
+		// }
+	});
+
+	it('will parse complex array', function() {
+		try {
+			var fn = parse('[1, 2, .25, 3.13, "ala ma kota", [1,2], [3], [1, 2, [1,2, [1,2]]]]');
+			console.log(fn());
+		} catch(e) {
+			console.log(e);
+		}
 	});
 
 });

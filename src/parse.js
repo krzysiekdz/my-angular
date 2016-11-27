@@ -38,6 +38,11 @@ Lexer.prototype.lex = function(text) {//tokenization
 			this.readString();
 		} else if(this.isIdentStart()) {
 			this.readIdent();
+		} else if (this.isArray()) {
+			this.tokens.push({
+				text: this.ch,
+			});
+			this.index++;
 		}
 		else {
 			throw 'unexpected character in expression: ' + this.ch;
@@ -179,6 +184,7 @@ Lexer.prototype.readIdent = function() {
 	});
 };
 
+
 //--------- lexer isSomething functions
 
 Lexer.prototype.isNumber = function(char) {
@@ -231,9 +237,14 @@ Lexer.prototype.isIdentStart = function() {
 	return identRegex.test(this.ch);
 };
 
+Lexer.prototype.isArray = function() {
+	var ch = this.ch;
+	return (ch === '[' || ch === ']');
+};
+
 //--------------------
 
-//-------------------- AST
+//-------------------- AST - is like parser; reads tokens from lexer and checks grammar
 function AST(lexer) {
 	this.lexer = lexer;
 }
@@ -241,7 +252,7 @@ function AST(lexer) {
 //types of ast nodes
 AST.Program = 'Program';
 AST.Literal = 'Literal';
-AST.Ident = 'Identifier';
+AST.ArrayExpression = 'ArrayExpression';
 
 AST.prototype.constants = {
 	'true' : {type: AST.Literal, value: true},
@@ -261,8 +272,10 @@ AST.prototype.program = function() {
 
 AST.prototype.primary = function() {
 	var token = this.tokens[0];
-	if(this.constants.hasOwnProperty(token.text)) {
-		console.log('token.text = ', token.text, this.constants[token.text]);
+	if(this.expect('[')) {
+		return this.arrayExpression();
+	}
+	else if(this.constants.hasOwnProperty(token.text)) {
 		return this.constants[token.text];
 	} else {
 		return this.constant();	
@@ -271,6 +284,32 @@ AST.prototype.primary = function() {
 
 AST.prototype.constant = function() {
 	return {type: AST.Literal, value: this.tokens[0].value};
+};
+
+AST.prototype.arrayExpression = function() {
+	this.consume(']');
+	return {type: AST.ArrayExpression, value: []};
+};
+
+// expect means expression may appear or not - if not, nothing happens
+AST.prototype.expect = function(e) {
+	if(this.tokens.length > 0) {
+		if(this.tokens[0].text === e || !e) {
+			return this.tokens.shift(); //shifts array, so index isn't necessary
+		}
+	}
+	/* return undefined; */
+};
+
+// consume means expression must appear, if not an error occurs 
+AST.prototype.consume = function(e) {
+	// console.log('consume', e);
+	var token = this.expect(']');
+	// console.log('consumed', token);
+	if(!token) {
+		throw 'Unexpected. Expected : ' + e;
+	}
+	return token;
 };
 
 
@@ -284,7 +323,8 @@ ASTCompiler.prototype.compile = function(text) {
 	this.state = {body: []};
 	this.recurse(ast);//przchodzi po drzewie ast, ktore jest juz zbudowane i tworzy z niego funkcję, tj kompiluje drzewo
 
-	console.log(this.state.body.join(''));
+	// console.log(this.state.body.join(''));
+
 	/* jshint -W054 */
 	return new Function(this.state.body.join(''));
 	/* jshint +W054 */
@@ -293,10 +333,12 @@ ASTCompiler.prototype.compile = function(text) {
 ASTCompiler.prototype.recurse = function(ast) {
 	switch(ast.type) {
 		case AST.Program: 
-			this.state.body.push('return ', this.recurse(ast.body), ';');
+			this.state.body.push('return ', this.recurse(ast.body), ' ;');
 			break;
 		case AST.Literal:
 			return this.escape(ast.value);
+		case AST.ArrayExpression: 
+			return '[]';
 	}
 };
 
