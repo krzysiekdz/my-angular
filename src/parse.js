@@ -38,7 +38,7 @@ Lexer.prototype.lex = function(text) {//tokenization
 			this.readString();
 		} else if(this.isIdentStart()) {
 			this.readIdent();
-		} else if (this.isArray()) {
+		} else if (this.isArray() || this.isObject()) {
 			this.tokens.push({
 				text: this.ch,
 			});
@@ -242,6 +242,11 @@ Lexer.prototype.isArray = function() {
 	return (ch === '[' || ch === ']' || ch === ',');
 };
 
+Lexer.prototype.isObject = function() {
+	var ch = this.ch;
+	return (ch === '{' || ch === '}' || ch === ',' || ch === ':');
+};
+
 //--------------------
 
 //-------------------- AST - is like parser; reads tokens from lexer and checks grammar
@@ -254,6 +259,7 @@ function AST(lexer) {
 AST.Program = 'Program';
 AST.Literal = 'Literal';
 AST.ArrayExpression = 'ArrayExpression';
+AST.ObjectExpression = 'ObjectExpression';
 
 AST.prototype.constants = {
 	'true' : {type: AST.Literal, value: true},
@@ -276,8 +282,9 @@ AST.prototype.primary = function() {
 		var token = this.tokens[0];
 		if(this.expect('[')) {
 			return this.arrayDeclaration();
-		}
-		else if(this.constants.hasOwnProperty(token.text)) {
+		} else if (this.expect('{')) {
+			return this.objectDeclaration();
+		} else if(this.constants.hasOwnProperty(token.text)) {
 			return this.constants[this.consume().text];
 		} else {
 			return this.constant();	
@@ -303,6 +310,20 @@ AST.prototype.arrayDeclaration = function() {
 	}
 	this.consume(']');
 	return {type: AST.ArrayExpression, elements: elements};
+};
+
+AST.prototype.objectDeclaration = function() {
+	var object = {};
+	if(!this.peek('}')) {
+		// do {
+		// 	if(this.peek(']')) {
+		// 		break;
+		// 	}
+		// 	object.push(this.primary());
+		// } while(this.expect(','));
+	}
+	this.consume('}');
+	return {type: AST.ObjectExpression, object: object};
 };
 
 // return peek, not moving forward
@@ -364,6 +385,8 @@ ASTCompiler.prototype.recurse = function(ast) {
 				return self.recurse(element);
 			});
 			return '[' +  elements.join(',')  +']';
+		case AST.ObjectExpression : 
+			return '{}';
 	}
 };
 

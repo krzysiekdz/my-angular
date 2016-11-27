@@ -209,23 +209,11 @@ describe("parse", function(){
 		// }
 	});
 
-	// it('will parse complex array', function() {
-	// 	try {
-	// 		var fn = parse('[1, 2, .25, 3.13, "ala ma kota", [1,2], [3], [1, 2, [1,2, [1,2]]]]');
-	// 		console.log(fn());
-	// 	} catch(e) {
-	// 		console.log(e);
-	// 	}
-	// });
 
 	it('will parse complex array', function() {
-		try {
-			var fn = parse('[1,2,3, "ala ma kota 123# o imieniu \'karmel\'", [1,2, .25, true, [100, false]]]');
-			expect(fn()).toEqual([1,2,3, "ala ma kota 123# o imieniu \'karmel\'", [1,2, .25, true, [100, false]]]);
-		} catch(e) {
-			console.log(e);
-		}
-
+		var fn = parse('[1,2,3, "ala ma kota 123# o imieniu \'karmel\'", [1,2, .25, true, [100, false]]]');
+		expect(fn()).toEqual([1,2,3, "ala ma kota 123# o imieniu \'karmel\'", [1,2, .25, true, [100, false]]]);
+		
 		// var tokens;
 		// try {
 		// 	ast = new AST(new Lexer());
@@ -234,6 +222,25 @@ describe("parse", function(){
 		// } catch (e) {
 		// 	console.log(e, tokens);
 		// }
+	});
+
+	it('will parse empty object', function() {
+		try {
+			var fn = parse('{}');
+			expect(fn()).toEqual({});
+			console.log(fn());
+		} catch(e) {
+			console.log(e);
+		}
+
+		var tokens;
+		try {
+			ast = new AST(new Lexer());
+			tokens = ast.build("{}");
+			console.log(tokens);
+		} catch (e) {
+			console.log(e, tokens);
+		}
 	});
 
 });
