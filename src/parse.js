@@ -9,14 +9,14 @@ function parse(expr) {
 }
 
 //what for is that? we can deal without it, but it is educational purpose
-var ESCAPE = {'n': '\\n', 't':'\\t', 'f':'\\f', 'r':'\\r', 'v':'\\v', '\'':"\\'", '"':'\\"', '\\': '\\'};
+var ESCAPE = {'n': '\n', 't':'\t', 'f':'\f', 'r':'\r', 'v':'\v', '\'':"\'", '"':'\"', '\\': '\\'};
 
 //-------------------- Lexer
 function Lexer() {
 
 }
 
-Lexer.escapeList = /[\n\t\f\r\v]/g;//what escape characters in readString we will replace with its unicode like \\u000a for \n
+Lexer.escapeList = /[\n\t\f\r\v\'\"]/g;//what escape characters in readString we will replace with its unicode like \\u000a for \n
 Lexer.hexRegex = /[a-f0-9]{4}/ig;//regular expression for hexadecimal number
 
 Lexer.prototype.lex = function(text) {//tokenization
@@ -239,12 +239,13 @@ Lexer.prototype.isIdentStart = function() {
 
 Lexer.prototype.isArray = function() {
 	var ch = this.ch;
-	return (ch === '[' || ch === ']');
+	return (ch === '[' || ch === ']' || ch === ',');
 };
 
 //--------------------
 
 //-------------------- AST - is like parser; reads tokens from lexer and checks grammar
+// for example, arrays will be checked here, not in lexer, becaues they are grammar constructs
 function AST(lexer) {
 	this.lexer = lexer;
 }
@@ -271,43 +272,63 @@ AST.prototype.program = function() {
 };
 
 AST.prototype.primary = function() {
-	var token = this.tokens[0];
-	if(this.expect('[')) {
-		return this.arrayExpression();
-	}
-	else if(this.constants.hasOwnProperty(token.text)) {
-		return this.constants[token.text];
+	if (this.tokens.length > 0) {
+		var token = this.tokens[0];
+		if(this.expect('[')) {
+			return this.arrayDeclaration();
+		}
+		else if(this.constants.hasOwnProperty(token.text)) {
+			return this.constants[this.consume().text];
+		} else {
+			return this.constant();	
+		}
 	} else {
-		return this.constant();	
+		throw 'Expected primary, got nothing.';
 	}
 };
 
 AST.prototype.constant = function() {
-	return {type: AST.Literal, value: this.tokens[0].value};
+	return {type: AST.Literal, value: this.consume().value};
 };
 
-AST.prototype.arrayExpression = function() {
+AST.prototype.arrayDeclaration = function() {
+	var elements = [];
+	if(!this.peek(']')) {
+		do {
+			if(this.peek(']')) {
+				break;
+			}
+			elements.push(this.primary());
+		} while(this.expect(','));
+	}
 	this.consume(']');
-	return {type: AST.ArrayExpression, value: []};
+	return {type: AST.ArrayExpression, elements: elements};
 };
 
-// expect means expression may appear or not - if not, nothing happens
-AST.prototype.expect = function(e) {
+// return peek, not moving forward
+AST.prototype.peek = function(e) {
 	if(this.tokens.length > 0) {
 		if(this.tokens[0].text === e || !e) {
-			return this.tokens.shift(); //shifts array, so index isn't necessary
+			return this.tokens[0];
 		}
 	}
 	/* return undefined; */
 };
 
-// consume means expression must appear, if not an error occurs 
+// 'e' may appear or not - if not, nothing happens; if exists moves forward in tokens queue
+AST.prototype.expect = function(e) {
+	var token = this.peek(e);
+	if(token) {
+		return this.tokens.shift();//shifts array, so index isn't necessary
+	}
+	/* return undefined; */
+};
+
+// consume means expression must appear, if not an error occurs but consume() return first token and moves forward
 AST.prototype.consume = function(e) {
-	// console.log('consume', e);
-	var token = this.expect(']');
-	// console.log('consumed', token);
+	var token = this.expect(e);
 	if(!token) {
-		throw 'Unexpected. Expected : ' + e;
+		throw 'Expected : \'' + e + '\' .';
 	}
 	return token;
 };
@@ -321,7 +342,7 @@ function ASTCompiler(ast) {
 ASTCompiler.prototype.compile = function(text) {
 	var ast = this.ast.build(text);//buduje drzewo ast
 	this.state = {body: []};
-	this.recurse(ast);//przchodzi po drzewie ast, ktore jest juz zbudowane i tworzy z niego funkcję, tj kompiluje drzewo
+	this.recurse(ast);//przechodzi po drzewie ast, ktore jest juz zbudowane i tworzy z niego funkcję, tj kompiluje drzewo
 
 	// console.log(this.state.body.join(''));
 
@@ -338,7 +359,11 @@ ASTCompiler.prototype.recurse = function(ast) {
 		case AST.Literal:
 			return this.escape(ast.value);
 		case AST.ArrayExpression: 
-			return '[]';
+			var self = this;
+			var elements = _.map(ast.elements, function(element) {
+				return self.recurse(element);
+			});
+			return '[' +  elements.join(',')  +']';
 	}
 };
 
