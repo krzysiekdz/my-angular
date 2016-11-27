@@ -181,6 +181,7 @@ Lexer.prototype.readIdent = function() {
 	ident = ident.join('');
 	this.tokens.push({
 		text: ident,
+		value: ident,
 	});
 };
 
@@ -298,6 +299,7 @@ AST.prototype.constant = function() {
 	return {type: AST.Literal, value: this.consume().value};
 };
 
+//array grammar
 AST.prototype.arrayDeclaration = function() {
 	var elements = [];
 	if(!this.peek(']')) {
@@ -312,18 +314,31 @@ AST.prototype.arrayDeclaration = function() {
 	return {type: AST.ArrayExpression, elements: elements};
 };
 
+//object grammar
 AST.prototype.objectDeclaration = function() {
-	var object = {};
+	var elements = [];
+	var attr, val, colon;
 	if(!this.peek('}')) {
-		// do {
-		// 	if(this.peek(']')) {
-		// 		break;
-		// 	}
-		// 	object.push(this.primary());
-		// } while(this.expect(','));
+		do {
+			if(this.peek('}')) {
+				break;
+			}
+			attr = this.primary();
+			if(attr.type !== AST.Literal) {
+				throw 'Expected attribute literal, got something else.';
+			}
+			colon = this.expect(':');
+
+			if(colon) { //if colon exists, we have somthing like {a:5}
+				val = this.primary(); //val musn't be only Literal
+				elements.push({attr: attr, val:val});
+			} else { //if colon doesnt exist, we probably have something like {a,b} where a and b are variables
+				throw 'Expected \':\', got something else.';
+			}
+		} while(this.expect(','));
 	}
 	this.consume('}');
-	return {type: AST.ObjectExpression, object: object};
+	return {type: AST.ObjectExpression, elements: elements};
 };
 
 // return peek, not moving forward
@@ -373,6 +388,7 @@ ASTCompiler.prototype.compile = function(text) {
 };
 
 ASTCompiler.prototype.recurse = function(ast) {
+	var self, elements;
 	switch(ast.type) {
 		case AST.Program: 
 			this.state.body.push('return ', this.recurse(ast.body), ' ;');
@@ -380,13 +396,19 @@ ASTCompiler.prototype.recurse = function(ast) {
 		case AST.Literal:
 			return this.escape(ast.value);
 		case AST.ArrayExpression: 
-			var self = this;
-			var elements = _.map(ast.elements, function(element) {
+			self = this;
+			elements = _.map(ast.elements, function(element) {
 				return self.recurse(element);
 			});
 			return '[' +  elements.join(',')  +']';
 		case AST.ObjectExpression : 
-			return '{}';
+			self = this;
+			elements = _.map(ast.elements, function(element) {
+				var attrName = self.recurse(element.attr);//for ex: type:Literal, value: 'a' -must be literal, but may be ident - we have to turn it into string when this case
+				var val = self.recurse(element.val);//for ex: type: ArrayExpression
+				return attrName + ':' + val;
+			});
+			return '{' +  elements.join(',')  +'}';
 	}
 };
 

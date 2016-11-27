@@ -228,19 +228,30 @@ describe("parse", function(){
 		try {
 			var fn = parse('{}');
 			expect(fn()).toEqual({});
-			console.log(fn());
+			// console.log(fn());
 		} catch(e) {
 			console.log(e);
 		}
 
-		var tokens;
+	});
+
+	it('will parse complex object', function() {
 		try {
-			ast = new AST(new Lexer());
-			tokens = ast.build("{}");
-			console.log(tokens);
-		} catch (e) {
-			console.log(e, tokens);
+			var fn = parse('{a:1, b:2, "ola" : "ma kota", .23: true, ala: [1,2], 1: {a:1, b:2, c: [1,2,3, {y:100, z:101}]}}');
+			expect(fn()).toEqual({a:1, b:2, "ola" : "ma kota", .23: true, ala: [1,2], 1: {a:1, b:2, c: [1,2,3, {y:100, z:101}]}});
+			// console.log(fn());
+		} catch(e) {
+			console.log(e);
 		}
+
+		// var tokens;
+		// try {
+		// 	ast = new AST(new Lexer());
+		// 	tokens = ast.build("{ala:1, ola:.24, 24: [1,2], 25: {a:1, b:2}}");
+		// 	console.log(tokens);
+		// } catch (e) {
+		// 	console.log(e, tokens);
+		// }
 	});
 
 });
