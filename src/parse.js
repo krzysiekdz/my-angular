@@ -181,7 +181,7 @@ Lexer.prototype.readIdent = function() {
 	ident = ident.join('');
 	this.tokens.push({
 		text: ident,
-		value: ident,
+		identifier: true,
 	});
 };
 
@@ -261,6 +261,7 @@ AST.Program = 'Program';
 AST.Literal = 'Literal';
 AST.ArrayExpression = 'ArrayExpression';
 AST.ObjectExpression = 'ObjectExpression';
+AST.Property = 'Property';
 
 AST.prototype.constants = {
 	'true' : {type: AST.Literal, value: true},
@@ -299,6 +300,10 @@ AST.prototype.constant = function() {
 	return {type: AST.Literal, value: this.consume().value};
 };
 
+AST.prototype.identifier = function() {
+	return {type: AST.Literal, value: this.consume().text};
+};
+
 //array grammar
 AST.prototype.arrayDeclaration = function() {
 	var elements = [];
@@ -316,29 +321,37 @@ AST.prototype.arrayDeclaration = function() {
 
 //object grammar
 AST.prototype.objectDeclaration = function() {
-	var elements = [];
-	var attr, val, colon;
+	var props = [];
+	var colon, prop;
 	if(!this.peek('}')) {
 		do {
 			if(this.peek('}')) {
 				break;
 			}
-			attr = this.primary();
-			if(attr.type !== AST.Literal) {
-				throw 'Expected attribute literal, got something else.';
+
+			prop = {type: AST.Property};
+
+			if(this.peek().identifier) {
+				prop.attr = this.identifier();
+			} else {
+				prop.attr = this.primary();
+				if(prop.attr.type !== AST.Literal) {
+					throw 'Expected attribute literal, got something else.';
+				}
 			}
+			
 			colon = this.expect(':');
 
 			if(colon) { //if colon exists, we have somthing like {a:5}
-				val = this.primary(); //val musn't be only Literal
-				elements.push({attr: attr, val:val});
+				prop.val = this.primary(); //val musn't be only Literal
+				props.push(prop);
 			} else { //if colon doesnt exist, we probably have something like {a,b} where a and b are variables
 				throw 'Expected \':\', got something else.';
 			}
 		} while(this.expect(','));
 	}
 	this.consume('}');
-	return {type: AST.ObjectExpression, elements: elements};
+	return {type: AST.ObjectExpression, props: props};
 };
 
 // return peek, not moving forward
@@ -383,12 +396,12 @@ ASTCompiler.prototype.compile = function(text) {
 	// console.log(this.state.body.join(''));
 
 	/* jshint -W054 */
-	return new Function(this.state.body.join(''));
+	return new Function('scope', this.state.body.join(''));
 	/* jshint +W054 */
 };
 
 ASTCompiler.prototype.recurse = function(ast) {
-	var self, elements;
+	var self, elements, props;
 	switch(ast.type) {
 		case AST.Program: 
 			this.state.body.push('return ', this.recurse(ast.body), ' ;');
@@ -403,12 +416,12 @@ ASTCompiler.prototype.recurse = function(ast) {
 			return '[' +  elements.join(',')  +']';
 		case AST.ObjectExpression : 
 			self = this;
-			elements = _.map(ast.elements, function(element) {
-				var attrName = self.recurse(element.attr);//for ex: type:Literal, value: 'a' -must be literal, but may be ident - we have to turn it into string when this case
-				var val = self.recurse(element.val);//for ex: type: ArrayExpression
+			props = _.map(ast.props, function(prop) {
+				var attrName = self.recurse(prop.attr);//for ex: type:Literal, value: 'a' -must be literal, but may be ident - we have to turn it into string when this case
+				var val = self.recurse(prop.val);//for ex: type: ArrayExpression
 				return attrName + ':' + val;
 			});
-			return '{' +  elements.join(',')  +'}';
+			return '{' +  props.join(',')  +'}';
 	}
 };
 

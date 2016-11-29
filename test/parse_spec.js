@@ -254,4 +254,15 @@ describe("parse", function(){
 		// }
 	});
 
+	it('looks up an attribute from the scope', function() {
+		try {
+			var fn = parse('aKey');
+			// expect(fn({aKey: 101})).toEqual(101);
+			console.log(fn());
+		} catch(e) {
+			console.log(e);
+		}
+
+	});
+
 });
