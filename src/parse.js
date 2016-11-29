@@ -400,7 +400,7 @@ ASTCompiler.prototype.compile = function(text) {
 	console.log(this.state.body.join(''));
 
 	/* jshint -W054 */
-	return new Function('scope', this.state.body.join(''));
+	return new Function('scope', this.state.body.join(''));//"kod wynikowy"
 	/* jshint +W054 */
 };
 
@@ -408,12 +408,14 @@ ASTCompiler.prototype.recurse = function(ast) {
 	var self, elements, props;
 	switch(ast.type) {
 		case AST.Program: 
-			this.state.body.push('return ', this.recurse(ast.body), ' ;');
+			this.state.body.push(' return ', this.recurse(ast.body), ' ;');//note that body.push will be executed, when recurse will finish its work, so we can call body.push inside recurse and it will add some code before 'return' code
 			break;
 		case AST.Literal:
 			return this.escape(ast.value);
 		case AST.Identifier:
-			return 'scope.' + ast.value;
+			this.addCode('var ret; ');
+			this.if_('scope', 'ret = ' + this.nonComputedMember('scope', ast.value) + '; ');
+			return 'ret';
 		case AST.ArrayExpression: 
 			self = this;
 			elements = _.map(ast.elements, function(element) {
@@ -425,11 +427,25 @@ ASTCompiler.prototype.recurse = function(ast) {
 			props = _.map(ast.props, function(prop) {
 				var key = prop.attr;
 				var attrName = key.type === AST.Identifier ? key.value : self.escape(key.value) ;//for ex: type:Literal, value: 'a' -must be literal, but may be ident - we have to turn it into string when this case
-				var val = self.recurse(prop.val);//for ex: type: ArrayExpression
+				var val = self.recurse(prop.val);//for ex: {type: ArrayExpression}
 				return attrName + ':' + val;
 			});
 			return '{' +  props.join(',')  +'}';
 	}
+};
+
+//adds if clause to the output code; adding attempts before adding 'return' code
+ASTCompiler.prototype.if_ = function(condition, statement) {
+	var code = 'if (' + condition + ') {' + statement + '} ';
+	this.state.body.push(code);
+};
+
+ASTCompiler.prototype.addCode = function(code) {
+	this.state.body.push(code);
+};
+
+ASTCompiler.prototype.nonComputedMember = function(left, right) {
+	return '(' + left + ').' + right;
 };
 
 ASTCompiler.prototype.escape = function(value) {

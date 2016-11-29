@@ -267,7 +267,7 @@ describe("parse", function(){
 
 	it('returns undefined when looking up attribute from undefined', function() {
 		try {
-			var fn = parse('aKey');
+			var fn = parse('bKey');
 			expect(fn()).toBeUndefined();
 			// console.log(fn({aKey:102}));
 		} catch(e) {
