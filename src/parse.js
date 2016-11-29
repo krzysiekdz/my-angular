@@ -394,13 +394,16 @@ function ASTCompiler(ast) {
 
 ASTCompiler.prototype.compile = function(text) {
 	var ast = this.ast.build(text);//buduje drzewo ast
-	this.state = {body: []};
+	this.state = {body: [], nextId: 0, vars: []};
 	this.recurse(ast);//przechodzi po drzewie ast, ktore jest juz zbudowane i tworzy z niego funkcję, tj kompiluje drzewo
 
-	console.log(this.state.body.join(''));
+	var resultCode = this.state.vars.length? 'var ' +  this.state.vars.join(',') + '; ' : '';
+	resultCode += this.state.body.join('');
+
+	console.log(resultCode);
 
 	/* jshint -W054 */
-	return new Function('scope', this.state.body.join(''));//"kod wynikowy"
+	return new Function('scope', resultCode);//"kod wynikowy"
 	/* jshint +W054 */
 };
 
@@ -413,9 +416,10 @@ ASTCompiler.prototype.recurse = function(ast) {
 		case AST.Literal:
 			return this.escape(ast.value);
 		case AST.Identifier:
-			this.addCode('var ret; ');
-			this.if_('scope', 'ret = ' + this.nonComputedMember('scope', ast.value) + '; ');
-			return 'ret';
+			var v = this.nextId();
+			this.if_('scope', 
+				this.assign(v, this.nonComputedMember('scope', ast.value)));
+			return v;
 		case AST.ArrayExpression: 
 			self = this;
 			elements = _.map(ast.elements, function(element) {
@@ -440,8 +444,14 @@ ASTCompiler.prototype.if_ = function(condition, statement) {
 	this.state.body.push(code);
 };
 
-ASTCompiler.prototype.addCode = function(code) {
-	this.state.body.push(code);
+ASTCompiler.prototype.assign = function(ident, value) {
+	return ident + ' = ' + value + ' ; ';
+};
+
+ASTCompiler.prototype.nextId = function() {
+	var id = 'v' + this.state.nextId++;
+	this.state.vars.push(id);
+	return id;
 };
 
 ASTCompiler.prototype.nonComputedMember = function(left, right) {
