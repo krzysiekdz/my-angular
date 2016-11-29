@@ -262,6 +262,7 @@ AST.Literal = 'Literal';
 AST.ArrayExpression = 'ArrayExpression';
 AST.ObjectExpression = 'ObjectExpression';
 AST.Property = 'Property';
+AST.Identifier = 'Identifier';
 
 AST.prototype.constants = {
 	'true' : {type: AST.Literal, value: true},
@@ -288,7 +289,10 @@ AST.prototype.primary = function() {
 			return this.objectDeclaration();
 		} else if(this.constants.hasOwnProperty(token.text)) {
 			return this.constants[this.consume().text];
-		} else {
+		} else if(token.identifier) {
+			return this.identifier();
+		}
+		else {
 			return this.constant();	
 		}
 	} else {
@@ -297,11 +301,11 @@ AST.prototype.primary = function() {
 };
 
 AST.prototype.constant = function() {
-	return {type: AST.Literal, value: this.consume().value};
+	return {type: AST.Literal, value: this.consume().value};//number or string
 };
 
 AST.prototype.identifier = function() {
-	return {type: AST.Literal, value: this.consume().text};
+	return {type: AST.Identifier, value: this.consume().text};//identifier that is: example 
 };
 
 //array grammar
@@ -393,7 +397,7 @@ ASTCompiler.prototype.compile = function(text) {
 	this.state = {body: []};
 	this.recurse(ast);//przechodzi po drzewie ast, ktore jest juz zbudowane i tworzy z niego funkcję, tj kompiluje drzewo
 
-	// console.log(this.state.body.join(''));
+	console.log(this.state.body.join(''));
 
 	/* jshint -W054 */
 	return new Function('scope', this.state.body.join(''));
@@ -408,6 +412,8 @@ ASTCompiler.prototype.recurse = function(ast) {
 			break;
 		case AST.Literal:
 			return this.escape(ast.value);
+		case AST.Identifier:
+			return 'scope.' + ast.value;
 		case AST.ArrayExpression: 
 			self = this;
 			elements = _.map(ast.elements, function(element) {
@@ -417,7 +423,8 @@ ASTCompiler.prototype.recurse = function(ast) {
 		case AST.ObjectExpression : 
 			self = this;
 			props = _.map(ast.props, function(prop) {
-				var attrName = self.recurse(prop.attr);//for ex: type:Literal, value: 'a' -must be literal, but may be ident - we have to turn it into string when this case
+				var key = prop.attr;
+				var attrName = key.type === AST.Identifier ? key.value : self.escape(key.value) ;//for ex: type:Literal, value: 'a' -must be literal, but may be ident - we have to turn it into string when this case
 				var val = self.recurse(prop.val);//for ex: type: ArrayExpression
 				return attrName + ':' + val;
 			});

@@ -257,8 +257,19 @@ describe("parse", function(){
 	it('looks up an attribute from the scope', function() {
 		try {
 			var fn = parse('aKey');
-			// expect(fn({aKey: 101})).toEqual(101);
-			console.log(fn());
+			expect(fn({aKey: 101})).toEqual(101);
+			// console.log(fn({aKey:102}));
+		} catch(e) {
+			console.log(e);
+		}
+
+	});
+
+	it('returns undefined when looking up attribute from undefined', function() {
+		try {
+			var fn = parse('aKey');
+			expect(fn()).toBeUndefined();
+			// console.log(fn({aKey:102}));
 		} catch(e) {
 			console.log(e);
 		}
