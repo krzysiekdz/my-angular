@@ -330,7 +330,42 @@ describe("parse", function(){
 		} catch(e) {
 			console.log(e);
 		}
+	});
 
+	it('uses locals instead of scope when there is a matching key', function() {
+		try {
+			var fn = parse('a');
+			var scope = {a:1};
+			var locals = {a:10};
+			expect(fn(scope, locals)).toEqual(10);
+			// console.log(fn(scope, locals));
+		} catch(e) {
+			console.log(e);
+		}
+	});
+
+	it('does not use locals instead of scope when no matching key', function() {
+		try {
+			var fn = parse('a');
+			var scope = {a:1};
+			var locals = {aa:10};
+			expect(fn(scope, locals)).toEqual(1);
+			// console.log(fn(scope, locals));
+		} catch(e) {
+			console.log(e);
+		}
+	});
+
+	it('uses locals instead of scope when the first part matches', function() {
+		try {
+			var fn = parse('a.b');
+			var scope = {a:{b: 1}};
+			var locals = {a:{}};
+			expect(fn(scope, locals)).toBeUndefined();
+			// console.log(fn(scope, locals));
+		} catch(e) {
+			console.log(e);
+		}
 	});
 	
 

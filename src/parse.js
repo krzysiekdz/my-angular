@@ -416,7 +416,7 @@ ASTCompiler.prototype.compile = function(text) {
 	console.log(resultCode);
 
 	/* jshint -W054 */
-	return new Function('scope', resultCode);//"kod wynikowy"
+	return new Function('scope, locals', resultCode);//"kod wynikowy"
 	/* jshint +W054 */
 };
 
@@ -432,7 +432,9 @@ ASTCompiler.prototype.recurse = function(ast) {
 			return 'scope';
 		case AST.Identifier:
 			v = this.nextId();
-			this.if_('scope', 
+			this.if_(this.getHasOwnProperty('locals', ast.value), 
+				this.assign(v, this.nonComputedMember('locals', ast.value)));
+			this.if_(this.isUndefined(v) + ' && scope', 
 				this.assign(v, this.nonComputedMember('scope', ast.value)));
 			return v;
 		case AST.ArrayExpression: 
@@ -466,6 +468,18 @@ ASTCompiler.prototype.if_ = function(condition, statement) {
 
 ASTCompiler.prototype.assign = function(ident, value) {
 	return ident + ' = ' + value + ' ; ';
+};
+
+ASTCompiler.prototype.not = function(expr) {
+	return '!(' + expr + ')';
+};
+
+ASTCompiler.prototype.isUndefined = function(value) {
+	return '(typeof ' + value + ' === \'undefined\')';
+};
+
+ASTCompiler.prototype.getHasOwnProperty = function(obj, prop) {
+	return obj + ' &&  (' + this.escape(prop) + ' in ' + obj + ') ';
 };
 
 ASTCompiler.prototype.nextId = function() {
