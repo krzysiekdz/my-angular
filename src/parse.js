@@ -38,7 +38,7 @@ Lexer.prototype.lex = function(text) {//tokenization
 			this.readString();
 		} else if(this.isIdentStart()) {
 			this.readIdent();
-		} else if (this.isArray() || this.isObject()) {
+		} else if (this.isArray() || this.isObject() || this.isDot()) {
 			this.tokens.push({
 				text: this.ch,
 			});
@@ -264,6 +264,7 @@ AST.ObjectExpression = 'ObjectExpression';
 AST.Property = 'Property';
 AST.Identifier = 'Identifier';
 AST.ThisExpression = 'ThisExpression';
+AST.MemberExpression = 'MemberExpression';
 
 AST.prototype.constants = {
 	'true' : {type: AST.Literal, value: true},
@@ -283,20 +284,30 @@ AST.prototype.program = function() {
 };
 
 AST.prototype.primary = function() {
+	var primary;
 	if (this.tokens.length > 0) {
 		var token = this.tokens[0];
 		if(this.expect('[')) {
-			return this.arrayDeclaration();
+			primary = this.arrayDeclaration();
 		} else if (this.expect('{')) {
-			return this.objectDeclaration();
+			primary = this.objectDeclaration();
 		} else if(this.constants.hasOwnProperty(token.text)) {
-			return this.constants[this.consume().text];
+			primary = this.constants[this.consume().text];
 		} else if(token.identifier) {
-			return this.identifier();
+			primary = this.identifier();
 		}
 		else {
-			return this.constant();	
+			primary = this.constant();	
 		}
+
+		while(this.expect('.')) { //if dot, we expect non computed identifier; computed is [] - for example a[1+2]
+			primary = {
+				type: AST.MemberExpression,
+				object: primary, //for example a.b.c.d - object is (a.b.c) and property is d, and object is (a.b)  and prop is c and ...
+				property: this.identifier(),
+			};
+		}
+		return primary;
 	} else {
 		throw 'Expected primary, got nothing.';
 	}
@@ -410,7 +421,7 @@ ASTCompiler.prototype.compile = function(text) {
 };
 
 ASTCompiler.prototype.recurse = function(ast) {
-	var self, elements, props;
+	var self, elements, props, v;
 	switch(ast.type) {
 		case AST.Program: 
 			this.state.body.push(' return ', this.recurse(ast.body), ' ;');//note that body.push will be executed, when recurse will finish its work, so we can call body.push inside recurse and it will add some code before 'return' code
@@ -420,7 +431,7 @@ ASTCompiler.prototype.recurse = function(ast) {
 		case AST.ThisExpression:
 			return 'scope';
 		case AST.Identifier:
-			var v = this.nextId();
+			v = this.nextId();
 			this.if_('scope', 
 				this.assign(v, this.nonComputedMember('scope', ast.value)));
 			return v;
@@ -439,6 +450,11 @@ ASTCompiler.prototype.recurse = function(ast) {
 				return attrName + ':' + val;
 			});
 			return '{' +  props.join(',')  +'}';
+		case AST.MemberExpression: //in recurse we go deep to the first object
+			v = this.nextId();
+			var left = this.recurse(ast.object);
+			this.if_(left, this.assign(v, this.nonComputedMember(left, ast.property.value)));
+			return v;
 	}
 };
 

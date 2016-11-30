@@ -273,7 +273,6 @@ describe("parse", function(){
 		} catch(e) {
 			console.log(e);
 		}
-
 	});
 
 	it('will parse \'this\'', function() {
@@ -285,7 +284,54 @@ describe("parse", function(){
 		} catch(e) {
 			console.log(e);
 		}
+	});
+
+	it('looks up a 2-part identifier path from scope', function() {
+		try {
+			var fn = parse('a.b');
+			var obj = {a: {b:102}};
+			expect(fn(obj)).toEqual(102);
+			// console.log(fn(obj));
+		} catch(e) {
+			console.log(e);
+		}
+	});
+
+	it('looks up a 4-part identifier path from scope', function() {
+		try {
+			var fn = parse('a.b.c.d');
+			var obj = {a: {b: {c: {d: 103}}}};
+			expect(fn(obj)).toEqual(103);
+			// console.log(fn(obj));
+		} catch(e) {
+			console.log(e);
+		}
 
 	});
+
+
+	it('looks up a object.identifier path from scope', function() {
+		try {
+			var fn = parse('{a:11}.a');
+			expect(fn()).toEqual(11);
+			// console.log(fn());
+		} catch(e) {
+			console.log(e);
+		}
+
+	});
+
+	it('looks up a 3-part identifier path from scope', function() {
+		try {
+			var fn = parse('a.b.c');
+			var obj = {a: {b: {c:103}}};
+			expect(fn(obj)).toEqual(103);
+			// console.log(fn(obj));
+		} catch(e) {
+			console.log(e);
+		}
+
+	});
+	
 
 });
