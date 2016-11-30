@@ -276,4 +276,16 @@ describe("parse", function(){
 
 	});
 
+	it('will parse \'this\'', function() {
+		try {
+			var fn = parse('this');
+			var obj = {a:1, b:2};
+			expect(fn(obj)).toEqual(obj);
+			// console.log(fn(obj));
+		} catch(e) {
+			console.log(e);
+		}
+
+	});
+
 });

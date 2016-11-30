@@ -263,11 +263,13 @@ AST.ArrayExpression = 'ArrayExpression';
 AST.ObjectExpression = 'ObjectExpression';
 AST.Property = 'Property';
 AST.Identifier = 'Identifier';
+AST.ThisExpression = 'ThisExpression';
 
 AST.prototype.constants = {
 	'true' : {type: AST.Literal, value: true},
 	'false' : {type: AST.Literal, value: false},
 	'null' : {type: AST.Literal, value: null},
+	'this' : {type: AST.ThisExpression},
 };
 
 AST.prototype.build = function(text) {//ast building
@@ -415,6 +417,8 @@ ASTCompiler.prototype.recurse = function(ast) {
 			break;
 		case AST.Literal:
 			return this.escape(ast.value);
+		case AST.ThisExpression:
+			return 'scope';
 		case AST.Identifier:
 			var v = this.nextId();
 			this.if_('scope', 
