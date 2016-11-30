@@ -332,6 +332,16 @@ describe("parse", function(){
 		}
 	});
 
+	it('parses array with property call', function() {
+		try {
+			var fn = parse('[1,2,3,4].length');
+			expect(fn()).toEqual(4);
+			console.log(fn());
+		} catch(e) {
+			console.log(e);
+		}
+	});
+
 	it('uses locals instead of scope when there is a matching key', function() {
 		try {
 			var fn = parse('a');
@@ -363,6 +373,84 @@ describe("parse", function(){
 			var locals = {a:{}};
 			expect(fn(scope, locals)).toBeUndefined();
 			// console.log(fn(scope, locals));
+		} catch(e) {
+			console.log(e);
+		}
+	});
+
+
+	it('parses a simple computed property access', function() {
+		try {
+			var fn = parse('a["b"]');
+			var scope = {a:{b: 1}};
+			expect(fn(scope)).toEqual(1);
+			
+		} catch(e) {
+			console.log(e);
+		}
+	});
+
+	it('parses a simple computed property access', function() {
+		try {
+			var fn = parse('a[\'b\']');
+			var scope = {a:{b: 1}};
+			expect(fn(scope)).toEqual(1);
+			
+		} catch(e) {
+			console.log(e);
+		}
+	});
+
+	it('parses a computed numeric array access', function() {
+		try {
+			var fn = parse('a[2]');
+			var scope = {a:[10,20,30]};
+			expect(fn(scope)).toEqual(30);
+			
+		} catch(e) {
+			console.log(e);
+		}
+	});
+
+	it('parses a computed access with another key as property', function() {
+		try {
+			var fn = parse('a[b]');
+			var scope = {a:{c:101}, b: 'c'};
+			expect(fn(scope)).toEqual(101);
+			
+		} catch(e) {
+			console.log(e);
+		}
+	});
+
+	it('parses a computed access with another access as a property', function() {
+		try {
+			var fn = parse('a[b["key"]]');
+			var scope = {a:{c:101}, b: {key: 'c'}};
+			expect(fn(scope)).toEqual(101);
+			
+		} catch(e) {
+			console.log(e);
+		}
+	});
+
+	it('parses a computed access with another access as a property', function() {
+		try {
+			var fn = parse('a[b.key]');
+			var scope = {a:{c:101}, b: {key: 'c'}};
+			expect(fn(scope)).toEqual(101);
+			
+		} catch(e) {
+			console.log(e);
+		}
+	});
+
+	it('parses a computed access with another access as a property', function() {
+		try {
+			var fn = parse('a[b[c[a.d.e[f]]]]');
+			var scope = {a:{d: {e: {F: 2}}, 4:101}, b: {3:4}, c: {2:3},  f:'G'};
+			var locals = {f:'F'};
+			expect(fn(scope, locals)).toEqual(101);
 		} catch(e) {
 			console.log(e);
 		}

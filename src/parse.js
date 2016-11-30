@@ -267,7 +267,7 @@ AST.ThisExpression = 'ThisExpression';
 AST.MemberExpression = 'MemberExpression';
 
 AST.prototype.constants = {
-	'true' : {type: AST.Literal, value: true},
+	'true' : {type: AST.Literal, value: true,},
 	'false' : {type: AST.Literal, value: false},
 	'null' : {type: AST.Literal, value: null},
 	'this' : {type: AST.ThisExpression},
@@ -300,12 +300,28 @@ AST.prototype.primary = function() {
 			primary = this.constant();	
 		}
 
-		while(this.expect('.')) { //if dot, we expect non computed identifier; computed is [] - for example a[1+2]
-			primary = {
-				type: AST.MemberExpression,
-				object: primary, //for example a.b.c.d - object is (a.b.c) and property is d, and object is (a.b)  and prop is c and ...
-				property: this.identifier(),
-			};
+		var next;
+		while((next = this.expect('.')) || (next = this.expect('['))) { //if dot, we expect non computed identifier; computed is [] - for example a[1+2]
+			if(next.text === '[') {
+				primary = {
+					type: AST.MemberExpression,
+					object: primary, 
+					property: this.primary(),
+					computed: true,
+				};
+				this.consume(']');
+			} else {
+				if(!this.peek().identifier) {
+					throw 'Expected identifier, got something else.';
+				}
+				primary = {
+					type: AST.MemberExpression,
+					object: primary, //for example a.b.c.d - object is (a.b.c) and property is d, and object is (a.b)  and prop is c and ...
+					property: this.identifier(),
+					computed: false,
+				};
+			}
+			
 		}
 		return primary;
 	} else {
@@ -455,7 +471,12 @@ ASTCompiler.prototype.recurse = function(ast) {
 		case AST.MemberExpression: //in recurse we go deep to the first object
 			v = this.nextId();
 			var left = this.recurse(ast.object);
-			this.if_(left, this.assign(v, this.nonComputedMember(left, ast.property.value)));
+			if(ast.computed) {
+				var right = this.recurse(ast.property);
+				this.if_(left, this.assign(v, this.computedMember(left, right)));	
+			} else {
+				this.if_(left, this.assign(v, this.nonComputedMember(left, ast.property.value)));	
+			}
 			return v;
 	}
 };
@@ -490,6 +511,10 @@ ASTCompiler.prototype.nextId = function() {
 
 ASTCompiler.prototype.nonComputedMember = function(left, right) {
 	return '(' + left + ').' + right;
+};
+
+ASTCompiler.prototype.computedMember = function(left, right) {
+	return '(' + left + ')[' + right + ']';
 };
 
 ASTCompiler.prototype.escape = function(value) {
