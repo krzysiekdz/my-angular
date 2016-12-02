@@ -537,6 +537,57 @@ describe("parse", function(){
 		expect(fn(scope, locals)).toBe(locals);
 		// console.log(fn(scope));
 	});
+
+	it('parses a simple attribute assignment', function() {
+		var fn = parse('a = 2');
+		var scope = {};
+		fn(scope);
+		expect(scope.a).toEqual(2);
+	});
+
+	it('can assign any primary expression', function() {
+		var fn = parse('a = fn()');
+		var scope = {
+			fn: function() {return 5},
+		};
+		fn(scope);
+		expect(scope.a).toEqual(5);
+	});
+
+	it('can assign a computed object property', function() {
+		var fn = parse('obj["a"] = 50');
+		var scope = {
+			obj:{},
+		};
+		fn(scope);
+		expect(scope.obj.a).toEqual(50);
+	});
+
+	it('can assign a non-computed object property', function() {
+		var fn = parse('obj.a = 50');
+		var scope = {
+			obj:{},
+		};
+		fn(scope);
+		expect(scope.obj.a).toEqual(50);
+	});
+
+	it('can assign a nested object property', function() {
+		var fn = parse('arr[0].a = 10');
+		var scope = {
+			arr: [{}]
+		};
+		fn(scope);
+		expect(scope.arr[0].a).toEqual(10);
+	});
+
+	it('creates objects in the assignment path that do not exist', function() {
+		var fn = parse('a.b.c = 2');
+		var scope = {};
+		fn(scope);
+		expect(scope.a.b.c).toEqual(2);
+	});
+
 	
 
 });

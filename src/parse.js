@@ -38,7 +38,7 @@ Lexer.prototype.lex = function(text) {//tokenization
 			this.readString();
 		} else if(this.isIdentStart()) {
 			this.readIdent();
-		} else if (this.is('[],{}:.()')) {
+		} else if (this.is('[],{}:.()=')) {
 			this.tokens.push({
 				text: this.ch,
 			});
@@ -275,6 +275,7 @@ AST.Identifier = 'Identifier';
 AST.ThisExpression = 'ThisExpression';
 AST.MemberExpression = 'MemberExpression';
 AST.CallExpression = 'CallExpression';
+AST.AssignmentExpression = 'AssignmentExpression';
 
 AST.prototype.constants = {
 	'true' : {type: AST.Literal, value: true,},
@@ -290,7 +291,7 @@ AST.prototype.build = function(text) {//ast building
 
 //methods that creates AST nodes
 AST.prototype.program = function() {
-	return {type: AST.Program, body: this.primary()};
+	return {type: AST.Program, body: this.assign()};
 };
 
 AST.prototype.primary = function() {
@@ -346,6 +347,15 @@ AST.prototype.primary = function() {
 	}
 };
 
+AST.prototype.assign = function() {
+	var left = this.primary();
+	if(this.expect('=')) {
+		var right = this.primary();
+		return {type: AST.AssignmentExpression, left: left, right: right};
+	}
+	return left;
+};
+
 AST.prototype.constant = function() {
 	return {type: AST.Literal, value: this.consume().value};//number or string
 };
@@ -358,7 +368,7 @@ AST.prototype.parseArguments = function() {
 	var args = [];
 	if(! this.peek(')')) {
 		do {
-			args.push(this.primary());
+			args.push(this.assign());
 		} while(this.expect(','));
 	}
 
@@ -373,7 +383,7 @@ AST.prototype.arrayDeclaration = function() {
 			if(this.peek(']')) {
 				break;
 			}
-			elements.push(this.primary());
+			elements.push(this.assign());
 		} while(this.expect(','));
 	}
 	this.consume(']');
@@ -404,7 +414,7 @@ AST.prototype.objectDeclaration = function() {
 			colon = this.expect(':');
 
 			if(colon) { //if colon exists, we have somthing like {a:5}
-				prop.val = this.primary(); //val musn't be only Literal
+				prop.val = this.assign(); //val musn't be only Literal
 				props.push(prop);
 			} else { //if colon doesnt exist, we probably have something like {a,b} where a and b are variables
 				throw 'Expected \':\', got something else.';
@@ -478,11 +488,12 @@ ASTCompiler.prototype.recurse = function(ast, context) {
 			return 'scope';
 		case AST.Identifier:
 			v = this.nextId();
-			this.if_(this.getHasOwnProperty('locals', ast.value), 
+			if(!context) { //if we dont have context, we need those if code ...
+				this.if_(this.getHasOwnProperty('locals', ast.value), 
 				this.assign(v, this.nonComputedMember('locals', ast.value)));
-			this.if_(this.isUndefined(v) + ' && scope', 
+					this.if_(this.isUndefined(v) + ' && scope', 
 				this.assign(v, this.nonComputedMember('scope', ast.value)));
-			if(context) {
+			} else {//... but if we have context, 'if code logic' is here
 				context.context = this.getHasOwnProperty('locals', ast.value) +  '? locals:scope';
 				context.name = ast.value;
 			}
@@ -507,17 +518,19 @@ ASTCompiler.prototype.recurse = function(ast, context) {
 				context.context = left;
 			}
 			if(ast.computed) {
-				var right = this.recurse(ast.property);
-				this.if_(left, this.assign(v, this.computedMember(left, right)));	
+				var right = this.recurse(ast.property);	
 				if(context) {
 					context.name = right;
 					context.computed = true;
+				} else {
+					this.if_(left, this.assign(v, this.computedMember(left, right)));
 				}
 			} else {
-				this.if_(left, this.assign(v, this.nonComputedMember(left, ast.property.value)));	
 				if(context) {
 					context.name = ast.property.value;
 					context.computed = false;
+				} else {
+					this.if_(left, this.assign(v, this.nonComputedMember(left, ast.property.value)));	
 				}
 			}
 			return v;
@@ -535,6 +548,16 @@ ASTCompiler.prototype.recurse = function(ast, context) {
 				}
 			}
 			return callee + ' && ' + callee + '(' + args.join(',') +')';
+		case AST.AssignmentExpression: 
+			var leftContext = {};
+			this.recurse(ast.left, leftContext);
+			var leftExpr;//for example, we have to assign to scope.a = 1, not assigning to v0 = 1 - thats why we use context
+			if(leftContext.computed) {
+				leftExpr = this.computedMember(leftContext.context, leftContext.name);
+			} else {
+				leftExpr = this.nonComputedMember(leftContext.context, leftContext.name);
+			}
+			return this.assign(leftExpr, this.recurse(ast.right));
 	}
 };
 
