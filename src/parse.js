@@ -331,7 +331,11 @@ AST.prototype.primary = function() {
 					computed: false,
 				};
 			} else if (next.text === '(') {
-				primary = {type: AST.CallExpression, callee: primary};
+				primary = {
+					type: AST.CallExpression, 
+					callee: primary,
+					arguments: this.parseArguments(),
+				};
 				this.consume(')');
 			}
 			
@@ -348,6 +352,17 @@ AST.prototype.constant = function() {
 
 AST.prototype.identifier = function() {
 	return {type: AST.Identifier, value: this.consume().text};//identifier that is: example 
+};
+
+AST.prototype.parseArguments = function() {
+	var args = [];
+	if(! this.peek(')')) {
+		do {
+			args.push(this.primary());
+		} while(this.expect(','));
+	}
+
+	return args;
 };
 
 //array grammar
@@ -452,7 +467,7 @@ ASTCompiler.prototype.compile = function(text) {
 };
 
 ASTCompiler.prototype.recurse = function(ast) {
-	var self, elements, props, v;
+	var self = this, elements, props, v;
 	switch(ast.type) {
 		case AST.Program: 
 			this.state.body.push(' return ', this.recurse(ast.body), ' ;');//note that body.push will be executed, when recurse will finish its work, so we can call body.push inside recurse and it will add some code before 'return' code
@@ -469,13 +484,11 @@ ASTCompiler.prototype.recurse = function(ast) {
 				this.assign(v, this.nonComputedMember('scope', ast.value)));
 			return v;
 		case AST.ArrayExpression: 
-			self = this;
 			elements = _.map(ast.elements, function(element) {
 				return self.recurse(element);
 			});
 			return '[' +  elements.join(',')  +']';
 		case AST.ObjectExpression : 
-			self = this;
 			props = _.map(ast.props, function(prop) {
 				var key = prop.attr;
 				var attrName = key.type === AST.Identifier ? key.value : self.escape(key.value) ;//for ex: type:Literal, value: 'a' -must be literal, but may be ident - we have to turn it into string when this case
@@ -495,7 +508,10 @@ ASTCompiler.prototype.recurse = function(ast) {
 			return v;
 		case AST.CallExpression: 
 			var callee = this.recurse(ast.callee);
-			return callee + ' && ' + callee + '()';
+			var args = _.map(ast.arguments, function(arg) {
+				return self.recurse(arg);
+			});
+			return callee + ' && ' + callee + '(' + args.join(',') +')';
 	}
 };
 

@@ -457,14 +457,38 @@ describe("parse", function(){
 	});
 
 	it('parses a function call', function() {
-		try {
-			var fn = parse('fn()');
-			var scope = {fn: function() {return 101;}};
-			// expect(fn(scope)).toEqual(101);
-			console.log(fn(scope));
-		} catch(e) {
-			console.log(e);
-		}
+		var fn = parse('fn()');
+		var scope = {fn: function() {return 101;}};
+		expect(fn(scope)).toEqual(101);
+		// console.log(fn(scope));
+	});
+
+	it('parses a function call with single number argument', function() {
+		var fn = parse('fn(23)');
+		var scope = {fn: function(a) {return a;}};
+		expect(fn(scope)).toEqual(23);
+		// console.log(fn(scope));
+	});
+
+	it('parses a function call with single identifier argument', function() {
+		var fn = parse('fn(b)');
+		var scope = {fn: function(a) {return a;}, b:103};
+		expect(fn(scope)).toEqual(103);
+		// console.log(fn(scope));
+	});
+
+	it('parses a function call with single identifier argument', function() {
+		var fn = parse('fn(fn2())');
+		var scope = {fn: function(a) {return a;}, fn2: function() {return 12;}};
+		expect(fn(scope)).toEqual(12);
+		// console.log(fn(scope));
+	});
+
+	it('parses a function call with multiple arguments', function() {
+		var fn = parse('fn(fn2(), n, 3)');
+		var scope = {fn: function(a,b,c) {return a+b+c;}, fn2: function() {return 12;}, n:2};
+		expect(fn(scope)).toEqual(17);
+		// console.log(fn(scope));
 	});
 	
 
