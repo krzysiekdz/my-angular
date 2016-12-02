@@ -490,6 +490,53 @@ describe("parse", function(){
 		expect(fn(scope)).toEqual(17);
 		// console.log(fn(scope));
 	});
+
+	it('calls methods accessed as computed properties', function() {
+		var fn = parse('obj["fn"]()');//is like calling function
+		var scope = {
+			obj : {
+				fn: function(){return this.a;},
+				a: 39,
+			}
+		};
+		expect(fn(scope)).toEqual(39);
+		// console.log(fn(scope));
+	});
+
+	it('calls methods accessed as non-computed properties', function() {
+		var fn = parse('obj.fn()');
+		var scope = {
+			obj : {
+				fn: function(){return this.a;},
+				a: 39,
+			}
+		};
+		expect(fn(scope)).toEqual(39);
+		// console.log(fn(scope));
+	});
+
+	it('binds bare functions to the scope', function() {
+		var fn = parse('fn()');
+		var scope = {
+			fn: function() {
+				return this;
+			}
+		};
+		expect(fn(scope)).toBe(scope);
+		// console.log(fn(scope));
+	});
+
+	it('binds bare functions on locals to the locals', function() {
+		var fn = parse('fn()');
+		var locals = {
+			fn: function() {
+				return this;
+			}
+		};
+		var scope = {};
+		expect(fn(scope, locals)).toBe(locals);
+		// console.log(fn(scope));
+	});
 	
 
 });

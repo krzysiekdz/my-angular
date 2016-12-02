@@ -466,7 +466,7 @@ ASTCompiler.prototype.compile = function(text) {
 	/* jshint +W054 */
 };
 
-ASTCompiler.prototype.recurse = function(ast) {
+ASTCompiler.prototype.recurse = function(ast, context) {
 	var self = this, elements, props, v;
 	switch(ast.type) {
 		case AST.Program: 
@@ -482,6 +482,10 @@ ASTCompiler.prototype.recurse = function(ast) {
 				this.assign(v, this.nonComputedMember('locals', ast.value)));
 			this.if_(this.isUndefined(v) + ' && scope', 
 				this.assign(v, this.nonComputedMember('scope', ast.value)));
+			if(context) {
+				context.context = this.getHasOwnProperty('locals', ast.value) +  '? locals:scope';
+				context.name = ast.value;
+			}
 			return v;
 		case AST.ArrayExpression: 
 			elements = _.map(ast.elements, function(element) {
@@ -498,19 +502,38 @@ ASTCompiler.prototype.recurse = function(ast) {
 			return '{' +  props.join(',')  +'}';
 		case AST.MemberExpression: //in recurse we go deep to the first object
 			v = this.nextId();
-			var left = this.recurse(ast.object);
+			var left = this.recurse(ast.object);//left is for example: scope.obj
+			if(context) {
+				context.context = left;
+			}
 			if(ast.computed) {
 				var right = this.recurse(ast.property);
 				this.if_(left, this.assign(v, this.computedMember(left, right)));	
+				if(context) {
+					context.name = right;
+					context.computed = true;
+				}
 			} else {
 				this.if_(left, this.assign(v, this.nonComputedMember(left, ast.property.value)));	
+				if(context) {
+					context.name = ast.property.value;
+					context.computed = false;
+				}
 			}
 			return v;
 		case AST.CallExpression: 
-			var callee = this.recurse(ast.callee);
+			var callContext = {};
+			var callee = this.recurse(ast.callee, callContext);
 			var args = _.map(ast.arguments, function(arg) {
 				return self.recurse(arg);
 			});
+			if(callContext.name) {
+				if(callContext.computed) {
+					callee = this.computedMember(callContext.context, callContext.name);
+				} else {
+					callee = this.nonComputedMember(callContext.context, callContext.name);
+				}
+			}
 			return callee + ' && ' + callee + '(' + args.join(',') +')';
 	}
 };
