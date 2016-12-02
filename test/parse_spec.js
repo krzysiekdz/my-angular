@@ -336,7 +336,7 @@ describe("parse", function(){
 		try {
 			var fn = parse('[1,2,3,4].length');
 			expect(fn()).toEqual(4);
-			console.log(fn());
+			// console.log(fn());
 		} catch(e) {
 			console.log(e);
 		}
@@ -451,6 +451,17 @@ describe("parse", function(){
 			var scope = {a:{d: {e: {F: 2}}, 4:101}, b: {3:4}, c: {2:3},  f:'G'};
 			var locals = {f:'F'};
 			expect(fn(scope, locals)).toEqual(101);
+		} catch(e) {
+			console.log(e);
+		}
+	});
+
+	it('parses a function call', function() {
+		try {
+			var fn = parse('fn()');
+			var scope = {fn: function() {return 101;}};
+			// expect(fn(scope)).toEqual(101);
+			console.log(fn(scope));
 		} catch(e) {
 			console.log(e);
 		}

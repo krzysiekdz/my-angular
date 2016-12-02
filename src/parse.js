@@ -38,7 +38,7 @@ Lexer.prototype.lex = function(text) {//tokenization
 			this.readString();
 		} else if(this.isIdentStart()) {
 			this.readIdent();
-		} else if (this.isArray() || this.isObject() || this.isDot()) {
+		} else if (this.is('[],{}:.()')) {
 			this.tokens.push({
 				text: this.ch,
 			});
@@ -248,6 +248,15 @@ Lexer.prototype.isObject = function() {
 	return (ch === '{' || ch === '}' || ch === ',' || ch === ':');
 };
 
+Lexer.prototype.isFunction = function() {
+	var ch = this.ch;
+	return (ch === '(' || ch === ')');
+};
+
+Lexer.prototype.is = function(e) {
+	return e.indexOf(this.ch) > -1 ? true:false;
+};
+
 //--------------------
 
 //-------------------- AST - is like parser; reads tokens from lexer and checks grammar
@@ -265,6 +274,7 @@ AST.Property = 'Property';
 AST.Identifier = 'Identifier';
 AST.ThisExpression = 'ThisExpression';
 AST.MemberExpression = 'MemberExpression';
+AST.CallExpression = 'CallExpression';
 
 AST.prototype.constants = {
 	'true' : {type: AST.Literal, value: true,},
@@ -301,7 +311,7 @@ AST.prototype.primary = function() {
 		}
 
 		var next;
-		while((next = this.expect('.')) || (next = this.expect('['))) { //if dot, we expect non computed identifier; computed is [] - for example a[1+2]
+		while((next = this.expect('.', '[', '('))) { //if dot, we expect non computed identifier; computed is [] - for example a[1+2]
 			if(next.text === '[') {
 				primary = {
 					type: AST.MemberExpression,
@@ -310,7 +320,7 @@ AST.prototype.primary = function() {
 					computed: true,
 				};
 				this.consume(']');
-			} else {
+			} else if(next.text === '.') {
 				if(!this.peek().identifier) {
 					throw 'Expected identifier, got something else.';
 				}
@@ -320,6 +330,9 @@ AST.prototype.primary = function() {
 					property: this.identifier(),
 					computed: false,
 				};
+			} else if (next.text === '(') {
+				primary = {type: AST.CallExpression, callee: primary};
+				this.consume(')');
 			}
 			
 		}
@@ -388,9 +401,11 @@ AST.prototype.objectDeclaration = function() {
 };
 
 // return peek, not moving forward
-AST.prototype.peek = function(e) {
+AST.prototype.peek = function(e1,e2,e3,e4) {
 	if(this.tokens.length > 0) {
-		if(this.tokens[0].text === e || !e) {
+		var text = this.tokens[0].text;
+		if(text === e1 || text === e2 || text === e3 || text === e4 || 
+			(!e1 && !e2 && !e3 && !e4) ){
 			return this.tokens[0];
 		}
 	}
@@ -398,8 +413,8 @@ AST.prototype.peek = function(e) {
 };
 
 // 'e' may appear or not - if not, nothing happens; if exists moves forward in tokens queue
-AST.prototype.expect = function(e) {
-	var token = this.peek(e);
+AST.prototype.expect = function(e1, e2, e3, e4) {
+	var token = this.peek(e1,e2,e3,e4);
 	if(token) {
 		return this.tokens.shift();//shifts array, so index isn't necessary
 	}
@@ -478,6 +493,9 @@ ASTCompiler.prototype.recurse = function(ast) {
 				this.if_(left, this.assign(v, this.nonComputedMember(left, ast.property.value)));	
 			}
 			return v;
+		case AST.CallExpression: 
+			var callee = this.recurse(ast.callee);
+			return callee + ' && ' + callee + '()';
 	}
 };
 
