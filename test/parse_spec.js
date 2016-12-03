@@ -641,6 +641,61 @@ describe("parse", function(){
 	// 	}
 	// });
 
+	it('does not allow accessing window as computed property', function() {
+		expect(function() {
+			var fn = parse('obj[w]');
+			var scope = {obj:{wn:window}, w: 'wn'};
+			console.log(fn(scope));
+		}).toThrow();
+	});
+
+	it('does not allow accessing window as non-computed property', function() {
+		expect(function() {
+			var fn = parse('obj.wn');
+			var scope = {obj:{wn: window}};
+			console.log(fn(scope));
+		}).toThrow();
+	});
+
+	it('does not allow accessing window as object in scope', function() {
+		expect(function() {
+			var fn = parse('obj');
+			var scope = {obj:window};
+			console.log(fn(scope));
+		}).toThrow();
+	});
+
+	it('does not allow pass window as an argument', function() {
+		expect(function() {
+			var fn = parse('a(wn)');
+			var scope = {a: function(a){return a;}, wn: window};
+			console.log(fn(scope));
+		}).toThrow();
+	});
+
+	it('does not allow accessing window methods', function() {
+		expect(function() {
+			var fn = parse('wn.alert("hello")');
+			var scope = {wn:window};
+			console.log(fn(scope));
+		}).toThrow();
+	});
+
+	it('does not allow functions to return window', function() {
+		expect(function() {
+			var fn = parse('a()');
+			var scope = {a: function() {return window;}};
+			console.log(fn(scope));
+		}).toThrow();
+	});
+
+	it('does not allow assign unsafe object to the scope', function() {
+		expect(function() {
+			var fn = parse('a = b');
+			var scope = {b: window};
+			console.log(fn(scope));
+		}).toThrow();
+	});
 	
 	
 

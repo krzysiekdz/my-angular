@@ -466,7 +466,7 @@ ASTCompiler.prototype.compile = function(text) {
 	this.state = {body: [], nextId: 0, vars: []};
 	this.recurse(ast);//przechodzi po drzewie ast, ktore jest juz zbudowane i tworzy z niego funkcję, tj kompiluje drzewo
 
-	//rebuilding function that we can pass function esnsureSafeMemberName to it
+	//rebuilding function that we can pass function esnsureSafeMemberName to it and other arguments
 	var resultCode = 'var fn = function(scope, locals) {';
 	resultCode += this.state.vars.length? 'var ' +  this.state.vars.join(',') + '; ' : '';
 	resultCode += this.state.body.join('');
@@ -475,7 +475,11 @@ ASTCompiler.prototype.compile = function(text) {
 	console.log(resultCode);
 
 	/* jshint -W054 */
-	return new Function('ensureSafeMemberName', resultCode)(this.ensureSafeMemberName);
+	return new Function(
+		'ensureSafeMemberName, ensureSafeObject', 
+		resultCode)(
+		this.ensureSafeMemberName, 
+		this.ensureSafeObject);
 	/* jshint +W054 */
 };
 
@@ -507,7 +511,7 @@ ASTCompiler.prototype.recurse = function(ast, context, create) {
 				context.context = this.getHasOwnProperty('locals', ast.value) +  '? locals:scope';
 				context.name = ast.value;
 			}
-			
+			this.ensureSafeObjectCode(v);
 			return v;
 		case AST.ArrayExpression: 
 			elements = _.map(ast.elements, function(element) {
@@ -557,6 +561,7 @@ ASTCompiler.prototype.recurse = function(ast, context, create) {
 				}
 				
 			}
+			this.ensureSafeObjectCode(v);
 			return v;
 		case AST.CallExpression: 
 			var callContext = {};
@@ -571,6 +576,7 @@ ASTCompiler.prototype.recurse = function(ast, context, create) {
 					callee = this.nonComputedMember(callContext.context, callContext.name);
 				}
 			}
+			this.ensureSafeObjectCode(callee + '(' + args.join(',') +')');
 			return callee + ' && ' + callee + '(' + args.join(',') +')';
 		case AST.AssignmentExpression: 
 			var leftContext = {};
@@ -613,6 +619,10 @@ ASTCompiler.prototype.nextId = function() {
 	return id;
 };
 
+ASTCompiler.prototype.ensureSafeObjectCode = function(obj) {
+	this.state.body.push(' ensureSafeObject(' + obj +'); ');
+};
+
 ASTCompiler.prototype.nonComputedMember = function(left, right) {
 	return '(' + left + ').' + right;
 };
@@ -635,6 +645,15 @@ ASTCompiler.prototype.ensureSafeMemberName = function(name) {
 	if(name === 'constructor' || name === '__proto__' || name === '__defineSetter__' ||
 		name === '__defineGetter__' || name === '__lookupSetter__' || name === '__lookupGetter__') {
 		throw 'Attempting to access a disallowed field in Angular expressions!';
+	}
+};
+
+ASTCompiler.prototype.ensureSafeObject = function(obj) {
+	if(!obj) {
+		return;
+	}
+	if(obj.document && obj.location && obj.alert && obj.setInterval) {
+		throw 'Referencing window in Angular expression is disallowed!';
 	}
 
 };
