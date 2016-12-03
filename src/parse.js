@@ -476,7 +476,7 @@ ASTCompiler.prototype.compile = function(text) {
 	/* jshint +W054 */
 };
 
-ASTCompiler.prototype.recurse = function(ast, context) {
+ASTCompiler.prototype.recurse = function(ast, context, create) {
 	var self = this, elements, props, v;
 	switch(ast.type) {
 		case AST.Program: 
@@ -488,6 +488,12 @@ ASTCompiler.prototype.recurse = function(ast, context) {
 			return 'scope';
 		case AST.Identifier:
 			v = this.nextId();
+			if(create) {
+				this.if_(this.not(this.getHasOwnProperty('locals', ast.value)) + 
+					'&& scope && ' +
+					this.not(this.getHasOwnProperty('scope', ast.value)),
+					this.assign(this.nonComputedMember('scope', ast.value), '{}'));
+			}
 			if(!context) { //if we dont have context, we need those if code ...
 				this.if_(this.getHasOwnProperty('locals', ast.value), 
 				this.assign(v, this.nonComputedMember('locals', ast.value)));
@@ -497,6 +503,7 @@ ASTCompiler.prototype.recurse = function(ast, context) {
 				context.context = this.getHasOwnProperty('locals', ast.value) +  '? locals:scope';
 				context.name = ast.value;
 			}
+			
 			return v;
 		case AST.ArrayExpression: 
 			elements = _.map(ast.elements, function(element) {
@@ -513,11 +520,15 @@ ASTCompiler.prototype.recurse = function(ast, context) {
 			return '{' +  props.join(',')  +'}';
 		case AST.MemberExpression: //in recurse we go deep to the first object
 			v = this.nextId();
-			var left = this.recurse(ast.object);//left is for example: scope.obj
+			var left = this.recurse(ast.object, undefined, create);//left is for example: scope.obj
 			if(context) {
 				context.context = left;
 			}
 			if(ast.computed) {
+				if(create) {
+					this.if_(this.not(this.computedMember(left, right)), 
+						this.assign(this.computedMember(left, right), '{}'));
+				}
 				var right = this.recurse(ast.property);	
 				if(context) {
 					context.name = right;
@@ -525,13 +536,19 @@ ASTCompiler.prototype.recurse = function(ast, context) {
 				} else {
 					this.if_(left, this.assign(v, this.computedMember(left, right)));
 				}
+				
 			} else {
+				if(create) {
+					this.if_(this.not(this.nonComputedMember(left, ast.property.value)), 
+						this.assign(this.nonComputedMember(left, ast.property.value), '{}'));
+				}
 				if(context) {
 					context.name = ast.property.value;
 					context.computed = false;
 				} else {
 					this.if_(left, this.assign(v, this.nonComputedMember(left, ast.property.value)));	
 				}
+				
 			}
 			return v;
 		case AST.CallExpression: 
@@ -550,7 +567,7 @@ ASTCompiler.prototype.recurse = function(ast, context) {
 			return callee + ' && ' + callee + '(' + args.join(',') +')';
 		case AST.AssignmentExpression: 
 			var leftContext = {};
-			this.recurse(ast.left, leftContext);
+			this.recurse(ast.left, leftContext, true);
 			var leftExpr;//for example, we have to assign to scope.a = 1, not assigning to v0 = 1 - thats why we use context
 			if(leftContext.computed) {
 				leftExpr = this.computedMember(leftContext.context, leftContext.name);
