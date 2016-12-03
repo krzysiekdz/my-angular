@@ -588,6 +588,60 @@ describe("parse", function(){
 		expect(scope.a.b.c).toEqual(2);
 	});
 
+	it('does not allow calling the function constructor', function() {
+		expect(function() {
+			var fn = parse('fn.constructor("return window;")()');
+			var scope = {};
+		}).toThrow();
+	});
+
+	it('does not allow accessing __proto__', function() {
+		expect(function() {
+			var fn = parse('obj.__proto__');
+			var scope = {obj:{}};
+		}).toThrow();
+	});
+
+	it('does not allow accessing __lookupGetter__', function() {
+		expect(function() {
+			var fn = parse('obj.__lookupGetter__("evil")');
+			var scope = {obj:{}};
+		}).toThrow();
+	});
+
+	it('does not allow accessing __lookupSetter__', function() {
+		expect(function() {
+			var fn = parse('obj.__lookupSetter__("evil")');
+			var scope = {obj:{}};
+		}).toThrow();
+	});
+
+	it('does not allow accessing __defineGetter__', function() {
+		expect(function() {
+			var fn = parse('obj.__defineGetter__("evil", fn)');
+			var scope = {obj:{}, fn:function(){}};
+		}).toThrow();
+	});
+
+	it('does not allow accessing __defineSetter__', function() {
+		expect(function() {
+			var fn = parse('obj.__defineSetter__("evil", fn)');
+			var scope = {obj:{}, fn:function(){}};
+		}).toThrow();
+	});
+
+	// it('does not allow accessing __defineSetter__', function() {
+	// 	var tokens;
+	// 	try {
+	// 		ast = new AST(new Lexer());
+	// 		tokens = ast.build('__defineSetter__("evil", fn)');
+	// 		console.log(tokens);
+	// 	} catch (e) {
+	// 		console.log(e, tokens);
+	// 	}
+	// });
+
+	
 	
 
 });

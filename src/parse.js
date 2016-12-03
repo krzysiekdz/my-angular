@@ -462,17 +462,20 @@ function ASTCompiler(ast) {
 }
 
 ASTCompiler.prototype.compile = function(text) {
-	var ast = this.ast.build(text);//buduje drzewo ast
+	var ast = this.ast.build(text);//build ast tree
 	this.state = {body: [], nextId: 0, vars: []};
 	this.recurse(ast);//przechodzi po drzewie ast, ktore jest juz zbudowane i tworzy z niego funkcję, tj kompiluje drzewo
 
-	var resultCode = this.state.vars.length? 'var ' +  this.state.vars.join(',') + '; ' : '';
+	//rebuilding function that we can pass function esnsureSafeMemberName to it
+	var resultCode = 'var fn = function(scope, locals) {';
+	resultCode += this.state.vars.length? 'var ' +  this.state.vars.join(',') + '; ' : '';
 	resultCode += this.state.body.join('');
+	resultCode += '}; return fn;';
 
 	console.log(resultCode);
 
 	/* jshint -W054 */
-	return new Function('scope, locals', resultCode);//"kod wynikowy"
+	return new Function('ensureSafeMemberName', resultCode)(this.ensureSafeMemberName);
 	/* jshint +W054 */
 };
 
@@ -487,6 +490,7 @@ ASTCompiler.prototype.recurse = function(ast, context, create) {
 		case AST.ThisExpression:
 			return 'scope';
 		case AST.Identifier:
+			this.ensureSafeMemberName(ast.value);
 			v = this.nextId();
 			if(create) {
 				this.if_(this.not(this.getHasOwnProperty('locals', ast.value)) + 
@@ -496,9 +500,9 @@ ASTCompiler.prototype.recurse = function(ast, context, create) {
 			}
 			if(!context) { //if we dont have context, we need those if code ...
 				this.if_(this.getHasOwnProperty('locals', ast.value), 
-				this.assign(v, this.nonComputedMember('locals', ast.value)));
-					this.if_(this.isUndefined(v) + ' && scope', 
-				this.assign(v, this.nonComputedMember('scope', ast.value)));
+					this.assign(v, this.nonComputedMember('locals', ast.value)));
+				this.if_(this.isUndefined(v) + ' && scope', 
+					this.assign(v, this.nonComputedMember('scope', ast.value)));
 			} else {//... but if we have context, 'if code logic' is here
 				context.context = this.getHasOwnProperty('locals', ast.value) +  '? locals:scope';
 				context.name = ast.value;
@@ -525,11 +529,12 @@ ASTCompiler.prototype.recurse = function(ast, context, create) {
 				context.context = left;
 			}
 			if(ast.computed) {
+				var right = this.recurse(ast.property);	
+				this.state.body.push(' ensureSafeMemberName(' + right +'); ');
 				if(create) {
 					this.if_(this.not(this.computedMember(left, right)), 
 						this.assign(this.computedMember(left, right), '{}'));
 				}
-				var right = this.recurse(ast.property);	
 				if(context) {
 					context.name = right;
 					context.computed = true;
@@ -538,6 +543,8 @@ ASTCompiler.prototype.recurse = function(ast, context, create) {
 				}
 				
 			} else {
+				this.ensureSafeMemberName(ast.property.value);
+
 				if(create) {
 					this.if_(this.not(this.nonComputedMember(left, ast.property.value)), 
 						this.assign(this.nonComputedMember(left, ast.property.value), '{}'));
@@ -553,7 +560,7 @@ ASTCompiler.prototype.recurse = function(ast, context, create) {
 			return v;
 		case AST.CallExpression: 
 			var callContext = {};
-			var callee = this.recurse(ast.callee, callContext);
+			var callee = this.recurse(ast.callee, callContext);//for example returns v1
 			var args = _.map(ast.arguments, function(arg) {
 				return self.recurse(arg);
 			});
@@ -622,6 +629,14 @@ ASTCompiler.prototype.escape = function(value) {
 	} else {
 		return value;
 	}
+};
+
+ASTCompiler.prototype.ensureSafeMemberName = function(name) {
+	if(name === 'constructor' || name === '__proto__' || name === '__defineSetter__' ||
+		name === '__defineGetter__' || name === '__lookupSetter__' || name === '__lookupGetter__') {
+		throw 'Attempting to access a disallowed field in Angular expressions!';
+	}
+
 };
 
 //-------------------- Parser 
