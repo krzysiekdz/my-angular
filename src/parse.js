@@ -19,6 +19,12 @@ function Lexer() {
 Lexer.escapeList = /[\n\t\f\r\v\'\"]/g;//what escape characters in readString we will replace with its unicode like \\u000a for \n
 Lexer.hexRegex = /[a-f0-9]{4}/ig;//regular expression for hexadecimal number
 
+var OPERATORS = {
+	'+': true,
+	'-': true,
+	'!': true,
+};
+
 Lexer.prototype.lex = function(text) {//tokenization
 	this.text = text;
 	this.index = 0;
@@ -38,14 +44,22 @@ Lexer.prototype.lex = function(text) {//tokenization
 			this.readString();
 		} else if(this.isIdentStart()) {
 			this.readIdent();
-		} else if (this.is('[],{}:.()=')) {
+		} else if (this.is('[],{}:.()=')) {//array, object, function, object lookup, assignment
 			this.tokens.push({
 				text: this.ch,
 			});
 			this.index++;
 		}
-		else {
-			throw 'unexpected character in expression: ' + this.ch;
+		else { //operator or unexpected
+			var op = this.ch;
+			if(OPERATORS[op]) {
+				this.tokens.push({
+					text: op,
+				});
+				this.index++;
+			} else {
+				throw 'unexpected character in expression: ' + this.ch;
+			}
 		}
 	}
 	return this.tokens;
@@ -276,6 +290,7 @@ AST.ThisExpression = 'ThisExpression';
 AST.MemberExpression = 'MemberExpression';
 AST.CallExpression = 'CallExpression';
 AST.AssignmentExpression = 'AssignmentExpression';
+AST.UnaryExpression = 'UnaryExpression';
 
 AST.prototype.constants = {
 	'true' : {type: AST.Literal, value: true,},
@@ -347,10 +362,23 @@ AST.prototype.primary = function() {
 	}
 };
 
+AST.prototype.unary = function() {
+	var token = this.expect('+', '-', '!');
+	if(token) {
+		return {
+			type: AST.UnaryExpression, 
+			operator: token.text,
+			left: this.unary(),  //for example may be !!!a
+		};
+	} else {
+		return this.primary();
+	}
+};
+
 AST.prototype.assign = function() {
-	var left = this.primary();
+	var left = this.unary();
 	if(this.expect('=')) {
-		var right = this.primary();
+		var right = this.unary();
 		return {type: AST.AssignmentExpression, left: left, right: right};
 	}
 	return left;
@@ -480,16 +508,18 @@ ASTCompiler.prototype.compile = function(text) {
 
 	/* jshint -W054 */
 	return new Function(
-		'ensureSafeMemberName, ensureSafeObject, ensureSafeFunction', 
+		'ensureSafeMemberName, ensureSafeObject, ensureSafeFunction, ifDefined', 
 		resultCode)(
 		this.ensureSafeMemberName, 
 		this.ensureSafeObject,
-		this.ensureSafeFunction);
+		this.ensureSafeFunction,
+		this.ifDefined);
 	/* jshint +W054 */
 };
 
 ASTCompiler.prototype.recurse = function(ast, context, create) {
 	var self = this, elements, props, v;
+	var left;
 	switch(ast.type) {
 		case AST.Program: 
 			this.state.body.push(' return ', this.recurse(ast.body), ' ;');//note that body.push will be executed, when recurse will finish its work, so we can call body.push inside recurse and it will add some code before 'return' code
@@ -536,7 +566,7 @@ ASTCompiler.prototype.recurse = function(ast, context, create) {
 			return '{' +  props.join(',')  +'}';
 		case AST.MemberExpression: //in recurse we go deep to the first object
 			v = this.nextId();
-			var left = this.recurse(ast.object, undefined, create);//left is for example: scope.obj
+			left = this.recurse(ast.object, undefined, create);//left is for example: scope.obj
 			if(context) {
 				context.context = left;
 			}
@@ -593,6 +623,9 @@ ASTCompiler.prototype.recurse = function(ast, context, create) {
 				leftExpr = this.nonComputedMember(leftContext.context, leftContext.name);
 			}
 			return this.assign(leftExpr, this.recurse(ast.right));
+		case AST.UnaryExpression : 
+			left = this.recurse(ast.left);
+			return  ' ' + ast.operator + '(ifDefined(' + left + ', 0) )';
 	}
 };
 
@@ -684,6 +717,10 @@ ASTCompiler.prototype.ensureSafeFunction = function(obj) {
 			throw 'Referencing call, apply or bind in Angular expressions is disallowed!';
 		}
 	}
+};
+
+ASTCompiler.prototype.ifDefined = function(value, def) {
+	return typeof value === 'undefined' ? def:value;
 };
 
 //-------------------- Parser 

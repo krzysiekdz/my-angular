@@ -746,6 +746,48 @@ describe("parse", function(){
 		}).toThrow();
 	});
 
+
+
+
+	/**********
+
+		OPERATOR EXPRESSIONS 
+
+	**********/
+
+	it('parses a unary +', function() {
+		expect(parse('+37')({})).toEqual(37);
+		expect(parse('++a')({a:37})).toEqual(37);
+		expect(parse('b = +a')({a:37})).toEqual(37);
+		expect(parse('+a')({})).toEqual(0);
+		// console.log(parse('++a')({a:1}));
+	});
+
+	it('parses a unary !', function() {
+		expect(parse('!a')({a:1})).toEqual(false);
+		expect(parse('!false')({a:1})).toEqual(true);
+		expect(parse('!13')({a:1})).toEqual(false);
+		expect(parse('!!a')({a:true})).toEqual(true);
+		// console.log(parse('!!!a')({a:true}));
+	});
+
+	it('parses a unary -', function() {
+		expect(parse('-37')({})).toEqual(-37);
+		expect(parse('--a')({a:37})).toEqual(37);
+		expect(parse('b = -a')({a:37})).toEqual(-37);
+		expect(parse('-a')({})).toEqual(-0);
+		// console.log(parse('-a')({}));
+	});
+
+	it('parses a ! in a string', function() {
+		expect(parse('"!"')()).toBe('!');
+		// try {
+		// 	console.log(parse('"!"')());
+		// } catch(e) {
+		// 	console.log(e);
+		// }
+	});
+
 	
 
 });
