@@ -714,7 +714,7 @@ describe("parse", function(){
 		}).toThrow();
 	});
 
-	it('does not allow calling the aliased function constructor', function() {
+	it('does not allow calling the Object', function() {
 		expect(function() {
 			var fn = parse('obj.create({})');
 			var scope = {obj: Object};
@@ -722,13 +722,30 @@ describe("parse", function(){
 		}).toThrow();
 	});
 
-	it('does not allow calling the aliased function constructor', function() {
+	it('does not allow calling aliased Object', function() {
 		expect(function() {
 			var fn = parse('obj.a.create({})');
 			var scope = {obj: {a: Object}};
 			console.log(fn(scope));
 		}).toThrow();
 	});
+
+	it('does not allow calling the function call method', function() {
+		expect(function() {
+			var fn = parse('f.call(obj)');
+			var scope = {f: function(){}, obj:{}};
+			console.log(fn(scope));
+		}).toThrow();
+	});
+
+	it('does not allow calling the function apply method', function() {
+		expect(function() {
+			var fn = parse('f.apply(obj)');
+			var scope = {f: function(){}, obj:{}};
+			console.log(fn(scope));
+		}).toThrow();
+	});
+
 	
 
 });
