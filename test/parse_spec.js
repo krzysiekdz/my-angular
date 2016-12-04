@@ -697,6 +697,38 @@ describe("parse", function(){
 		}).toThrow();
 	});
 	
+	it('does not allow using DOM objects', function() {
+		expect(function() {
+			var fn = parse('a.setAttribute("ala", 2)');
+			var scope = {a: document.documentElement};
+			console.log(fn(scope));
+		}).toThrow();
+	});
+
+	it('does not allow calling the aliased function constructor', function() {
+		expect(function() {
+			var fn = parse('b = a("return window;")');
+			var scope = {a: (function(){}).constructor};
+			console.log(fn(scope));
+			console.log(scope.b());
+		}).toThrow();
+	});
+
+	it('does not allow calling the aliased function constructor', function() {
+		expect(function() {
+			var fn = parse('obj.create({})');
+			var scope = {obj: Object};
+			console.log(fn(scope));
+		}).toThrow();
+	});
+
+	it('does not allow calling the aliased function constructor', function() {
+		expect(function() {
+			var fn = parse('obj.a.create({})');
+			var scope = {obj: {a: Object}};
+			console.log(fn(scope));
+		}).toThrow();
+	});
 	
 
 });

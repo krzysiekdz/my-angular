@@ -502,15 +502,18 @@ ASTCompiler.prototype.recurse = function(ast, context, create) {
 					this.not(this.getHasOwnProperty('scope', ast.value)),
 					this.assign(this.nonComputedMember('scope', ast.value), '{}'));
 			}
-			if(!context) { //if we dont have context, we need those if code ...
-				this.if_(this.getHasOwnProperty('locals', ast.value), 
+
+			//assigning to v - this is always necessary, because we always use 'v', so it must be initialized always
+			this.if_(this.getHasOwnProperty('locals', ast.value), 
 					this.assign(v, this.nonComputedMember('locals', ast.value)));
-				this.if_(this.isUndefined(v) + ' && scope', 
+			this.if_(this.isUndefined(v) + ' && scope', 
 					this.assign(v, this.nonComputedMember('scope', ast.value)));
-			} else {//... but if we have context, 'if code logic' is here
+			
+			if(context) {//... but if we have context, 'if code logic' is here, but we always need variable 'v'
 				context.context = this.getHasOwnProperty('locals', ast.value) +  '? locals:scope';
 				context.name = ast.value;
 			}
+			//here we use 'v' 
 			this.ensureSafeObjectCode(v);
 			return v;
 		case AST.ArrayExpression: 
@@ -539,13 +542,11 @@ ASTCompiler.prototype.recurse = function(ast, context, create) {
 					this.if_(this.not(this.computedMember(left, right)), 
 						this.assign(this.computedMember(left, right), '{}'));
 				}
+				this.if_(left, this.assign(v, this.computedMember(left, right)));
 				if(context) {
 					context.name = right;
 					context.computed = true;
-				} else {
-					this.if_(left, this.assign(v, this.computedMember(left, right)));
-				}
-				
+				} 
 			} else {
 				this.ensureSafeMemberName(ast.property.value);
 
@@ -553,13 +554,11 @@ ASTCompiler.prototype.recurse = function(ast, context, create) {
 					this.if_(this.not(this.nonComputedMember(left, ast.property.value)), 
 						this.assign(this.nonComputedMember(left, ast.property.value), '{}'));
 				}
+				this.if_(left, this.assign(v, this.nonComputedMember(left, ast.property.value)));	
 				if(context) {
 					context.name = ast.property.value;
 					context.computed = false;
-				} else {
-					this.if_(left, this.assign(v, this.nonComputedMember(left, ast.property.value)));	
-				}
-				
+				} 
 			}
 			this.ensureSafeObjectCode(v);
 			return v;
@@ -653,7 +652,13 @@ ASTCompiler.prototype.ensureSafeObject = function(obj) {
 		return;
 	}
 	if(obj.document && obj.location && obj.alert && obj.setInterval) {
-		throw 'Referencing window in Angular expression is disallowed!';
+		throw 'Referencing window in Angular expressions is disallowed!';
+	} else if (obj.children && (obj.nodeName || (obj.attr && obj.prop && obj.find))) {
+		throw 'Referencing DOM nodes in Angular expressions is disallowed!';
+	} else if (obj.constructor === obj) {//Function only has this 
+		throw 'Referencing Function in Angular expressions is disallowed!';
+	} else if (obj.getOwnPropertyNames && obj.getOwnPropertyDescriptor) {
+		throw 'Referencing Object in Angular expressions is disallowed!';
 	}
 
 };
