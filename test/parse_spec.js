@@ -781,13 +781,39 @@ describe("parse", function(){
 
 	it('parses a ! in a string', function() {
 		expect(parse('"!"')()).toBe('!');
-		// try {
-		// 	console.log(parse('"!"')());
-		// } catch(e) {
-		// 	console.log(e);
-		// }
 	});
 
+	it('parses a multiplication', function() {
+		expect(parse('-5 * 8')({})).toEqual(-40);
+		expect(parse('5 * 8 * 2')({})).toEqual(80);
+	});
+
+	it('parses a division', function() {
+		expect(parse('40 / 5')({})).toEqual(8);
+		expect(parse('64 / 2 / 8')({})).toEqual(4);
+	});
+
+	it('parses a modulo', function() {
+		expect(parse('8 % 5')({})).toEqual(3);
+		expect(parse('12 % 7 % 3')({})).toEqual(2);
+	});
+
+	it('parses an addition', function() {
+		expect(parse('8 + 5')({})).toEqual(13);
+		expect(parse('12 + 7 + 3')({})).toEqual(22);
+	});
+
+	it('parses an subtraction', function() {
+		expect(parse('8 - 5')({})).toEqual(3);
+		expect(parse('12 - 7 - 3')({})).toEqual(2);
+	});
+
+	it('parses a multiplicatives on a higher precedence than additives', function() {
+		expect(parse('2+3*5')({})).toEqual(17);
+		expect(parse('3+6/3*4-1')({})).toEqual(10);
+	});
+
+	
 	
 
 });

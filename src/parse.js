@@ -23,6 +23,9 @@ var OPERATORS = {
 	'+': true,
 	'-': true,
 	'!': true,
+	'*': true,
+	'/': true,
+	'%': true,
 };
 
 Lexer.prototype.lex = function(text) {//tokenization
@@ -291,6 +294,7 @@ AST.MemberExpression = 'MemberExpression';
 AST.CallExpression = 'CallExpression';
 AST.AssignmentExpression = 'AssignmentExpression';
 AST.UnaryExpression = 'UnaryExpression';
+AST.BinaryExpresssion = 'BinaryExpresssion';
 
 AST.prototype.constants = {
 	'true' : {type: AST.Literal, value: true,},
@@ -375,10 +379,39 @@ AST.prototype.unary = function() {
 	}
 };
 
-AST.prototype.assign = function() {
+AST.prototype.multiplicative = function() {
 	var left = this.unary();
+	var token;
+	while ((token = this.expect('*', '/', '%'))) {
+		left = {
+			type: AST.BinaryExpresssion,
+			left: left, 
+			operator: token.text,
+			right: this.unary(),
+		};
+	}
+	return left;
+};
+
+AST.prototype.additive = function() {
+	var left = this.multiplicative();
+	var token;
+	while ((token = this.expect('+', '-'))) {
+		left = {
+			type: AST.BinaryExpresssion,
+			left: left, 
+			operator: token.text,
+			right: this.multiplicative(),
+		};
+	}
+	return left;
+};
+
+
+AST.prototype.assign = function() {
+	var left = this.additive();
 	if(this.expect('=')) {
-		var right = this.unary();
+		var right = this.additive();
 		return {type: AST.AssignmentExpression, left: left, right: right};
 	}
 	return left;
@@ -519,7 +552,7 @@ ASTCompiler.prototype.compile = function(text) {
 
 ASTCompiler.prototype.recurse = function(ast, context, create) {
 	var self = this, elements, props, v;
-	var left;
+	var left, right;
 	switch(ast.type) {
 		case AST.Program: 
 			this.state.body.push(' return ', this.recurse(ast.body), ' ;');//note that body.push will be executed, when recurse will finish its work, so we can call body.push inside recurse and it will add some code before 'return' code
@@ -571,7 +604,7 @@ ASTCompiler.prototype.recurse = function(ast, context, create) {
 				context.context = left;
 			}
 			if(ast.computed) {
-				var right = this.recurse(ast.property);	
+				right = this.recurse(ast.property);	
 				this.state.body.push(' ensureSafeMemberName(' + right +'); ');
 				if(create) {
 					this.if_(this.not(this.computedMember(left, right)), 
@@ -626,6 +659,10 @@ ASTCompiler.prototype.recurse = function(ast, context, create) {
 		case AST.UnaryExpression : 
 			left = this.recurse(ast.left);
 			return  ' ' + ast.operator + '(ifDefined(' + left + ', 0) )';
+		case AST.BinaryExpresssion : 
+			left = this.recurse(ast.left);
+			right = this.recurse(ast.right);
+			return  '(' + left + ') ' + ast.operator + ' (' + right + ') ' ;
 	}
 };
 
