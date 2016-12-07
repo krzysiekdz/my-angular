@@ -26,6 +26,15 @@ var OPERATORS = {
 	'*': true,
 	'/': true,
 	'%': true,
+	'<': true,
+	'>': true,
+	'<=': true,
+	'>=': true,
+	'==': true,
+	'!=': true,
+	'===': true,
+	'!==': true,
+	'=': true,
 };
 
 Lexer.prototype.lex = function(text) {//tokenization
@@ -47,7 +56,7 @@ Lexer.prototype.lex = function(text) {//tokenization
 			this.readString();
 		} else if(this.isIdentStart()) {
 			this.readIdent();
-		} else if (this.is('[],{}:.()=')) {//array, object, function, object lookup, assignment
+		} else if (this.is('[],{}:.()')) {//array, object, function, object lookup, assignment
 			this.tokens.push({
 				text: this.ch,
 			});
@@ -55,6 +64,15 @@ Lexer.prototype.lex = function(text) {//tokenization
 		}
 		else { //operator or unexpected
 			var op = this.ch;
+			if ((op === '=' || op === '!' || op === '<' || op === '>') && 
+				(this.peek() === '=')) {
+				op += '=';
+				this.index++;
+				if(this.peek() === '=') {
+					op += '=';
+					this.index++;
+				}
+			}
 			if(OPERATORS[op]) {
 				this.tokens.push({
 					text: op,
@@ -294,7 +312,7 @@ AST.MemberExpression = 'MemberExpression';
 AST.CallExpression = 'CallExpression';
 AST.AssignmentExpression = 'AssignmentExpression';
 AST.UnaryExpression = 'UnaryExpression';
-AST.BinaryExpresssion = 'BinaryExpresssion';
+AST.BinaryExpression = 'BinaryExpression';
 
 AST.prototype.constants = {
 	'true' : {type: AST.Literal, value: true,},
@@ -384,7 +402,7 @@ AST.prototype.multiplicative = function() {
 	var token;
 	while ((token = this.expect('*', '/', '%'))) {
 		left = {
-			type: AST.BinaryExpresssion,
+			type: AST.BinaryExpression,
 			left: left, 
 			operator: token.text,
 			right: this.unary(),
@@ -398,20 +416,49 @@ AST.prototype.additive = function() {
 	var token;
 	while ((token = this.expect('+', '-'))) {
 		left = {
-			type: AST.BinaryExpresssion,
+			type: AST.BinaryExpression,
 			left: left, 
 			operator: token.text,
 			right: this.multiplicative(),
-		};
+		}; 
 	}
 	return left;
 };
 
 
-AST.prototype.assign = function() {
+AST.prototype.relational = function() {
 	var left = this.additive();
+	var token;
+	while ((token = this.expect('<', '>', '>=', '<='))) {
+		left = {
+			type: AST.BinaryExpression,
+			left: left, 
+			operator: token.text,
+			right: this.additive(),
+		}; 
+	}
+	return left;
+};
+
+
+AST.prototype.equality = function() {
+	var left = this.relational();
+	var token;
+	while ((token = this.expect('==', '!=', '===', '!=='))) {
+		left = {
+			type: AST.BinaryExpression,
+			left: left, 
+			operator: token.text,
+			right: this.relational(),
+		}; 
+	}
+	return left;
+};
+
+AST.prototype.assign = function() {
+	var left = this.equality();
 	if(this.expect('=')) {
-		var right = this.additive();
+		var right = this.equality();
 		return {type: AST.AssignmentExpression, left: left, right: right};
 	}
 	return left;
@@ -659,9 +706,13 @@ ASTCompiler.prototype.recurse = function(ast, context, create) {
 		case AST.UnaryExpression : 
 			left = this.recurse(ast.left);
 			return  ' ' + ast.operator + '(ifDefined(' + left + ', 0) )';
-		case AST.BinaryExpresssion : 
+		case AST.BinaryExpression : 
 			left = this.recurse(ast.left);
 			right = this.recurse(ast.right);
+			if(ast.operator === '+' || ast.operator === '-') {
+				left = ' ifDefined(' + left + ', 0) ';
+				right = ' ifDefined(' + right + ', 0) ';
+			}
 			return  '(' + left + ') ' + ast.operator + ' (' + right + ') ' ;
 	}
 };

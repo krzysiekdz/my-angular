@@ -630,16 +630,7 @@ describe("parse", function(){
 		}).toThrow();
 	});
 
-	// it('does not allow accessing __defineSetter__', function() {
-	// 	var tokens;
-	// 	try {
-	// 		ast = new AST(new Lexer());
-	// 		tokens = ast.build('__defineSetter__("evil", fn)');
-	// 		console.log(tokens);
-	// 	} catch (e) {
-	// 		console.log(e, tokens);
-	// 	}
-	// });
+	
 
 	it('does not allow accessing window as computed property', function() {
 		expect(function() {
@@ -812,6 +803,52 @@ describe("parse", function(){
 		expect(parse('2+3*5')({})).toEqual(17);
 		expect(parse('3+6/3*4-1')({})).toEqual(10);
 	});
+
+	it('substitutes undefined with zero in addition', function() {
+		expect(parse('8 +a')({})).toEqual(8);
+		expect(parse('12 -a')({})).toEqual(12);
+	});
+
+	it('parses relational operators', function() {
+		expect(parse('1 < 2')({})).toBe(true);
+		expect(parse('1 > 2')({})).toBe(false);
+		expect(parse('1 <= 2')({})).toBe(true);
+		expect(parse('2 <= 2')({})).toBe(true);
+		expect(parse('1 >= 2')({})).toBe(false);
+		expect(parse('2 >= 2')({})).toBe(true);
+	});
+
+	it('parses equality operators', function() {
+		expect(parse('1 == 1')({})).toBe(true);
+		expect(parse('1 == "1"')({})).toBe(true);
+		expect(parse('1 != 1')({})).toBe(false);
+		expect(parse('2 === 2')({})).toBe(true);
+		expect(parse('1 === "1"')({})).toBe(false);
+		expect(parse('2 !== 2')({})).toBe(false);
+	});
+
+	it('parses relationals on a higher precedence than equality', function() {
+		expect(parse('2 == "2" > 2 === "2"')({})).toBe(false);
+	});
+
+	it('parses additive on a higher precedence than relational', function() {
+		expect(parse('2+3 < 6-2')({})).toBe(false);
+	});
+
+	
+
+
+	// it('does not allow accessing __defineSetter__', function() {
+	// 	var tokens;
+	// 	try {
+	// 		// ast = new AST(new Lexer());
+	// 		// tokens = ast.build('2 > 3');
+	// 		tokens = new Lexer().lex('2 == 3');
+	// 		console.log(tokens);
+	// 	} catch (e) {
+	// 		console.log(e, tokens);
+	// 	}
+	// });
 
 	
 	
