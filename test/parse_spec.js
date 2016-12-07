@@ -884,6 +884,26 @@ describe("parse", function(){
 		expect(parse('0 !== 1 || 2 == 2 || 3 > 2')({})).toBe(true);
 	});
 
+	it('parses the ternanry expression', function() {
+		expect(parse('a === 12 ? true : false')({a:12})).toBe(true);
+		expect(parse('a === 12 ? true : false')({a:13})).toBe(false);
+	});
+
+	it('parses OR with the higher precedence than ternary', function() {
+		expect(parse('0 || 1 ? 0 || 2 : 0 || 3')({a:12})).toBe(2);
+	});
+
+	it('parses nested ternaries', function() {
+		expect(parse('a === 12 ? b === 13 ? "ala" : "ma kota" : c === 12 ? "lokomotywa" : "stoi"')({
+			a:13, b : 5, c: 12})).toEqual("lokomotywa");
+	});
+
+	it('can assign the ternary expression', function() {
+		expect(parse('b = a > 10 ? 100:101')({a:12})).toBe(100);
+		// expect(parse('b = a > 10 ? c = 2 : 100')({a:12})).toBe(2);
+		// console.log(parse('b = a > 10 ? c = 2 : 100')({a:12, c:0}));
+	});
+
 
 	// it('does not allow accessing __defineSetter__', function() {
 	// 	var tokens;

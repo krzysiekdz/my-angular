@@ -58,7 +58,7 @@ Lexer.prototype.lex = function(text) {//tokenization
 			this.readString();
 		} else if(this.isIdentStart()) {
 			this.readIdent();
-		} else if (this.is('[],{}:.()')) {//array, object, function, object lookup, assignment
+		} else if (this.is('[],{}:.()?')) {//array, object, function, object lookup, assignment, ternarny ?:
 			this.tokens.push({
 				text: this.ch,
 			});
@@ -322,6 +322,7 @@ AST.AssignmentExpression = 'AssignmentExpression';
 AST.UnaryExpression = 'UnaryExpression';
 AST.BinaryExpression = 'BinaryExpression';
 AST.LogicalExpression = 'LogicalExpression';
+AST.TernaryExpression = "TernaryExpression";
 
 AST.prototype.constants = {
 	'true' : {type: AST.Literal, value: true,},
@@ -492,10 +493,28 @@ AST.prototype.logicalOR = function() {
 	return left;
 };
 
+AST.prototype.ternarny = function() {
+	var cond = this.logicalOR();
+	var token = this.expect('?');
+	if(token) {
+		var left, right;
+		left = this.assign();
+		this.consume(':');
+		right = this.assign();
+		return {
+			type: AST.TernaryExpression,
+			left: left,
+			right: right,
+			cond: cond,
+		};
+	}
+	return cond;
+};
+
 AST.prototype.assign = function() {
-	var left = this.logicalOR();
+	var left = this.ternarny();
 	if(this.expect('=')) {
-		var right = this.logicalOR();
+		var right = this.ternarny();
 		return {type: AST.AssignmentExpression, left: left, right: right};
 	}
 	return left;
@@ -758,6 +777,17 @@ ASTCompiler.prototype.recurse = function(ast, context, create) {
 			this.if_(ast.operator === '&&' ? v: this.not(v), 
 				this.assign(v, this.recurse(ast.right)));
 			return v;
+		case AST.TernaryExpression : 
+			var cond = this.recurse(ast.cond);
+			left = this.recurse(ast.left);
+			right = this.recurse(ast.right);
+			return '(' + cond + ') ? (' + left + ' ) : ( ' + right + ' ) ';
+			// v = this.nextId();
+			// var vtest = this.nextId();
+			// this.addCode(this.assign(vtest, cond));
+			// this.if_(vtest, this.assign(v, left));
+			// this.if_(this.not(vtest), this.assign(v, right));
+			// return v;
 	}
 };
 
@@ -769,6 +799,10 @@ ASTCompiler.prototype.if_ = function(condition, statement) {
 
 ASTCompiler.prototype.assign = function(ident, value) {
 	return ident + ' = ' + value + ' ; ';
+};
+
+ASTCompiler.prototype.addCode = function(code) {
+	this.body.state.push(code);
 };
 
 ASTCompiler.prototype.not = function(expr) {
