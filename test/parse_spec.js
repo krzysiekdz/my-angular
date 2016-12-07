@@ -460,7 +460,7 @@ describe("parse", function(){
 		var fn = parse('fn()');
 		var scope = {fn: function() {return 101;}};
 		expect(fn(scope)).toEqual(101);
-		// console.log(fn(scope));
+		console.log(fn(scope));
 	});
 
 	it('parses a function call with single number argument', function() {
@@ -835,7 +835,54 @@ describe("parse", function(){
 		expect(parse('2+3 < 6-2')({})).toBe(false);
 	});
 
-	
+	it('parses logical AND', function() {
+		expect(parse('true && true')({})).toBe(true);
+		expect(parse('true && false')({})).toBe(false);
+	});
+
+	it('parses logical OR', function() {
+		expect(parse('true || true')({})).toBe(true);
+		expect(parse('false || true')({})).toBe(true);
+		expect(parse('false || false')({})).toBe(false);
+	});
+
+	it('parses multiple ANDs', function() {
+		expect(parse('true && true && true')({})).toBe(true);
+		expect(parse('true && true && false')({})).toBe(false);
+	});
+
+	it('parses multiple ORs', function() {
+		expect(parse('true || true || true')({})).toBe(true);
+		expect(parse('true || true || false')({})).toBe(true);
+		expect(parse('false || false || true')({})).toBe(true);
+		expect(parse('false || false || false')({})).toBe(false);
+	});
+
+	it('short-circuits AND', function() {
+		var invoked = false;
+		var scope = {fn: function(){invoked = true}};
+		parse('false && fn()')(scope);
+		expect(invoked).toBe(false);
+	});
+
+	it('short-circuits OR', function() {
+		var invoked = false;
+		var scope = {fn: function(){invoked = true}};
+		parse('true || fn()')(scope);
+		expect(invoked).toBe(false);
+	});
+
+	it('parses AND with higher precedence than OR', function() {
+		expect(parse('false && true || true')({})).toBe(true);
+	});
+
+	it('parses AND with lower precedence than equality', function() {
+		expect(parse('false == false && 2 == 2 && 3 > 2')({})).toBe(true);
+	});
+
+	it('parses OR with lower precedence than equality', function() {
+		expect(parse('0 !== 1 || 2 == 2 || 3 > 2')({})).toBe(true);
+	});
 
 
 	// it('does not allow accessing __defineSetter__', function() {
@@ -843,7 +890,7 @@ describe("parse", function(){
 	// 	try {
 	// 		// ast = new AST(new Lexer());
 	// 		// tokens = ast.build('2 > 3');
-	// 		tokens = new Lexer().lex('2 == 3');
+	// 		tokens = new Lexer().lex('2 || 3');
 	// 		console.log(tokens);
 	// 	} catch (e) {
 	// 		console.log(e, tokens);

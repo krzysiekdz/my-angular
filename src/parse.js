@@ -35,6 +35,8 @@ var OPERATORS = {
 	'===': true,
 	'!==': true,
 	'=': true,
+	'||': true,
+	'&&': true,
 };
 
 Lexer.prototype.lex = function(text) {//tokenization
@@ -64,15 +66,21 @@ Lexer.prototype.lex = function(text) {//tokenization
 		}
 		else { //operator or unexpected
 			var op = this.ch;
+			var peek = this.peek();
 			if ((op === '=' || op === '!' || op === '<' || op === '>') && 
-				(this.peek() === '=')) {
+				(peek === '=')) {
 				op += '=';
 				this.index++;
 				if(this.peek() === '=') {
 					op += '=';
 					this.index++;
 				}
+			} else if ((op === '&' && peek === '&') || 
+				(op === '|' && peek === '|')) {
+				op += peek;
+				this.index++;
 			}
+
 			if(OPERATORS[op]) {
 				this.tokens.push({
 					text: op,
@@ -313,6 +321,7 @@ AST.CallExpression = 'CallExpression';
 AST.AssignmentExpression = 'AssignmentExpression';
 AST.UnaryExpression = 'UnaryExpression';
 AST.BinaryExpression = 'BinaryExpression';
+AST.LogicalExpression = 'LogicalExpression';
 
 AST.prototype.constants = {
 	'true' : {type: AST.Literal, value: true,},
@@ -455,10 +464,38 @@ AST.prototype.equality = function() {
 	return left;
 };
 
-AST.prototype.assign = function() {
+AST.prototype.logicalAND = function() {
 	var left = this.equality();
+	var token;
+	while ((token = this.expect('&&'))) {
+		left = {
+			type: AST.LogicalExpression,
+			left: left, 
+			operator: token.text,
+			right: this.equality(),
+		}; 
+	}
+	return left;
+};
+
+AST.prototype.logicalOR = function() {
+	var left = this.logicalAND();
+	var token;
+	while ((token = this.expect('||'))) {
+		left = {
+			type: AST.LogicalExpression,
+			left: left, 
+			operator: token.text,
+			right: this.logicalAND(),
+		}; 
+	}
+	return left;
+};
+
+AST.prototype.assign = function() {
+	var left = this.logicalOR();
 	if(this.expect('=')) {
-		var right = this.equality();
+		var right = this.logicalOR();
 		return {type: AST.AssignmentExpression, left: left, right: right};
 	}
 	return left;
@@ -691,8 +728,9 @@ ASTCompiler.prototype.recurse = function(ast, context, create) {
 				}
 			}
 			this.ensureSafeFunctionCode(callee);
-			this.ensureSafeObjectCode(callee + '(' + args.join(',') +')');
-			return callee + ' && ' + callee + '(' + args.join(',') +')';
+			// this.ensureSafeObjectCode(callee + '(' + args.join(',') +')');
+			return callee + ' && ' +  'ensureSafeObject(' + callee + '(' + args.join(',') +') ) ';
+			// return callee + ' && ' + callee + '(' + args.join(',') +')';
 		case AST.AssignmentExpression: 
 			var leftContext = {};
 			this.recurse(ast.left, leftContext, true);
@@ -714,6 +752,12 @@ ASTCompiler.prototype.recurse = function(ast, context, create) {
 				right = ' ifDefined(' + right + ', 0) ';
 			}
 			return  '(' + left + ') ' + ast.operator + ' (' + right + ') ' ;
+		case AST.LogicalExpression : 
+			v = this.nextId();
+			this.state.body.push(this.assign(v, this.recurse(ast.left)));
+			this.if_(ast.operator === '&&' ? v: this.not(v), 
+				this.assign(v, this.recurse(ast.right)));
+			return v;
 	}
 };
 
@@ -795,6 +839,8 @@ ASTCompiler.prototype.ensureSafeObject = function(obj) {
 	// else if(obj === CALL || obj === APPLY || obj === BIND) {
 	// 	throw 'Referencing call, apply or bind in Angular expressions is disallowed!';
 	// }
+
+	return obj;
 };
 
 ASTCompiler.prototype.ensureSafeFunction = function(obj) {
