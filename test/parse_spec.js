@@ -904,13 +904,31 @@ describe("parse", function(){
 		// console.log(parse('b = a > 10 ? c = 2 : 100')({a:12, c:0}));
 	});
 
+	it('parses parentheses altering the precedence order', function() {
+		expect(parse('2 * (3+1)')({})).toBe(8);
+		expect(parse('false && (1 || 2)')({})).toBe(false);
+	});
+
+	it('parses several statements', function() {
+		var scope = {};
+		parse('a=1; b=2; c=3;')(scope);
+		expect(scope).toEqual({a:1, b:2, c:3});
+		console.log(scope);
+	});
+
+	it('returns the value of the last statement', function() {
+		var scope = {};
+		var res = parse('a=1; b=2; c=3; a+b+c;')(scope);
+		expect(res).toEqual(6);
+	});
+
 
 	// it('does not allow accessing __defineSetter__', function() {
 	// 	var tokens;
 	// 	try {
-	// 		// ast = new AST(new Lexer());
-	// 		// tokens = ast.build('2 > 3');
-	// 		tokens = new Lexer().lex('2 || 3');
+	// 		ast = new AST(new Lexer());
+	// 		tokens = ast.build('2 > 3; 4*(2+3);;; 2-3');
+	// 		// tokens = new Lexer().lex('2 || 3');
 	// 		console.log(tokens);
 	// 	} catch (e) {
 	// 		console.log(e, tokens);

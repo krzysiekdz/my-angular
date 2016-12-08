@@ -58,7 +58,7 @@ Lexer.prototype.lex = function(text) {//tokenization
 			this.readString();
 		} else if(this.isIdentStart()) {
 			this.readIdent();
-		} else if (this.is('[],{}:.()?')) {//array, object, function, object lookup, assignment, ternarny ?:
+		} else if (this.is('[],{}:.()?;')) {//array, object, function, object lookup, assignment, ternarny ?:, statement ;
 			this.tokens.push({
 				text: this.ch,
 			});
@@ -338,14 +338,26 @@ AST.prototype.build = function(text) {//ast building
 
 //methods that creates AST nodes
 AST.prototype.program = function() {
-	return {type: AST.Program, body: this.assign()};
+	var body = [];
+	while(true) {
+		if(this.tokens.length && !this.peek(';')) {
+			body.push(this.assign());
+		}	
+		if(!this.expect(';')) {
+			return {type: AST.Program, body: body};		
+		}
+	}
 };
 
 AST.prototype.primary = function() {
 	var primary;
 	if (this.tokens.length > 0) {
 		var token = this.tokens[0];
-		if(this.expect('[')) {
+		if(this.expect('(')) {
+			primary = this.assign();
+			this.consume(')');
+		}
+		else if(this.expect('[')) {
 			primary = this.arrayDeclaration();
 		} else if (this.expect('{')) {
 			primary = this.objectDeclaration();
@@ -636,7 +648,7 @@ ASTCompiler.prototype.compile = function(text) {
 
 	//rebuilding function that we can pass function esnsureSafeMemberName to it and other arguments
 	var resultCode = 'var fn = function(scope, locals) {';
-	resultCode += this.state.vars.length? 'var ' +  this.state.vars.join(',') + '; ' : '';
+	resultCode += this.state.vars.length? 'var ' +  this.state.vars.join(',') + ';' : '';
 	resultCode += this.state.body.join('');
 	resultCode += '}; return fn;';
 
@@ -655,10 +667,14 @@ ASTCompiler.prototype.compile = function(text) {
 
 ASTCompiler.prototype.recurse = function(ast, context, create) {
 	var self = this, elements, props, v;
-	var left, right;
+	var left, right, body;
 	switch(ast.type) {
 		case AST.Program: 
-			this.state.body.push(' return ', this.recurse(ast.body), ' ;');//note that body.push will be executed, when recurse will finish its work, so we can call body.push inside recurse and it will add some code before 'return' code
+			body = this.state.body;
+			for(var i = 0; i < ast.body.length-1; i++) {
+				body.push(this.recurse(ast.body[i]), ';');
+			}
+			body.push(' return ', this.recurse(ast.body[i]), ';');
 			break;
 		case AST.Literal:
 			return this.escape(ast.value);
