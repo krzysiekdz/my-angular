@@ -537,15 +537,19 @@ AST.prototype.assign = function() {
 AST.prototype.filter = function() {
 	var left = this.assign();
 	while (this.expect('|')) {
+		var args = [left];//first argument is the left expression
 		if(!this.peek().identifier) {
 			throw 'filter expression expected filter name, got something else : "' +  this.peek() +'"';
 		}
 		left = {
 			type: AST.CallExpression, 
 			callee: this.identifier(), 
-			arguments: [left],
+			arguments: args,
 			filter: true,
 		};
+		while(this.expect(':')) { //here is something like a:b:12:'cat'
+			args.push(this.assign());
+		}
 	}
 	return left;
 };
@@ -771,10 +775,12 @@ ASTCompiler.prototype.recurse = function(ast, context, create) {
 			return v;
 		case AST.CallExpression: 
 			var callee, args, callContext;
-			if(ast.filter) {
+			if(ast.filter) {//that means this is filter expression - filters are functions
 				callee = this.filter(ast.callee.value);
-				args = this.recurse(ast.arguments[0]);
-				return callee + '(' + args + ') ';
+				args = _.map(ast.arguments, function(arg) {
+					return self.recurse(arg);
+				});
+				return callee + '(' + args.join(',') + ') ';
 			} else {
 				callContext = {};
 				callee = this.recurse(ast.callee, callContext);//for example returns v1

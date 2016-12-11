@@ -50,4 +50,24 @@ describe("filter", function() {
 		expect(parse('a | upcase | lowcase | upcase | lowcase')({a: 'Ala Ma Kota'})).toEqual('ala ma kota');
 	});
 
+	it('can pass additional arguments to filter', function() {
+		register('repeat', function() {
+			return function(s, n) {
+				return _.repeat(s, n);
+			}
+		});
+		
+		expect(parse('a | repeat:3')({a: 'abc'})).toEqual('abcabcabc');
+	});
+
+	it('can pass several additional arguments to filter', function() {
+		register('add', function() {
+			return function(s, n1,n2,n3) {
+				return s+n1+n2+n3;
+			}
+		});
+		
+		expect(parse('a | add:1:b:3')({a: 10, b:5})).toEqual(19);
+	});
+
 });
