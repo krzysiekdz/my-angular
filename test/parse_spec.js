@@ -913,7 +913,7 @@ describe("parse", function(){
 		var scope = {};
 		parse('a=1; b=2; c=3;')(scope);
 		expect(scope).toEqual({a:1, b:2, c:3});
-		console.log(scope);
+		// console.log(scope);
 	});
 
 	it('returns the value of the last statement', function() {
