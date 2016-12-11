@@ -40,4 +40,14 @@ describe("filter", function() {
 		// }
 	});
 
+	it('can parse multiple filter expressions', function() {
+		register('upcase', function() {
+			return String.toUpperCase;
+		});
+		register('lowcase', function() {
+			return String.toLowerCase;
+		});
+		expect(parse('a | upcase | lowcase | upcase | lowcase')({a: 'Ala Ma Kota'})).toEqual('ala ma kota');
+	});
+
 });

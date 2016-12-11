@@ -536,7 +536,7 @@ AST.prototype.assign = function() {
 
 AST.prototype.filter = function() {
 	var left = this.assign();
-	if (this.expect('|')) {
+	while (this.expect('|')) {
 		if(!this.peek().identifier) {
 			throw 'filter expression expected filter name, got something else : "' +  this.peek() +'"';
 		}
