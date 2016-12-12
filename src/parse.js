@@ -675,7 +675,7 @@ ASTCompiler.prototype.compile = function(text) {
 	resultCode += this.state.body.join('');
 	resultCode += '}; return fn;';
 
-	console.log(resultCode);
+	// console.log(resultCode);
 
 	/* jshint -W054 */
 	return new Function(
