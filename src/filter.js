@@ -27,8 +27,11 @@ function filterFilter() {
 		var predicateFn;
 		if(_.isFunction(filterExpr)){
 			predicateFn = filterExpr;
-		} else if (_.isString(filterExpr) || _.isNumber(filterExpr) || 
-			_.isBoolean(filterExpr) || _.isNull(filterExpr)) {
+		} else if (_.isString(filterExpr) || 
+			_.isNumber(filterExpr) || 
+			_.isBoolean(filterExpr) || 
+			_.isNull(filterExpr) || 
+			_.isObject(filterExpr)) {
 			predicateFn = createPredicateFn(filterExpr);
 		} else {
 			return arr;
@@ -39,28 +42,50 @@ function filterFilter() {
 
 function createPredicateFn(expr) {
 
-	function comparator(item) {
-		if (_.isObject(item)) {
-			for(var key in item) {
-				if(comparator(item[key])) {
-					return true;
-				}
-			}
-			return false;
-		} else {
-			if(_.isNull(item) || _.isNull(expr)) {//that means null never will be converted into string
-				return item === expr;
-			} else if (_.isUndefined(item)) {
-				return false;
+	function deepCompare(actual, expected, compare) {
+		if(_.isString(expected) && _.startsWith(expected, '!')) {
+			return !deepCompare(actual, expected.substring(1), comparator);
+		}
+		else if (_.isObject(actual)) {
+			if(_.isObject(expected)) {//both are objects
+				return _.every(_.toPlainObject(expected), function(expVal, expKey) {
+					if(_.isUndefined(expVal)) {
+						return true;
+					}
+					return deepCompare(actual[expKey], expVal, comparator);
+				});
 			} else {
-				expr = ('' + expr).toLowerCase();
-				item = ('' + item).toLowerCase();
-				return item.indexOf(expr) !== -1;	
-			}	
+				for(var key in actual) {
+					if(deepCompare(actual[key], expected, comparator)) {
+						return true;
+					}
+				}
+				return false;
+			}
+			
+		} else {
+			return comparator(actual, expected);
 		}
 	}
 
-	return comparator;
+	function comparator(actual, expected) {
+		if(_.isNull(actual) || _.isNull(expected)) {//that means null never will be converted into string
+			return actual === expected;
+		} else if (_.isUndefined(actual) || _.isUndefined(expected)) {
+			return false;
+		} else if(_.isObject(expected)) { //this situation may happen
+			return false;
+		}
+		else {
+			expected = ('' + expected).toLowerCase();
+			actual = ('' + actual).toLowerCase();
+			return actual.indexOf(expected) !== -1;	
+		}	
+	}
+
+	return function(item) {
+		return deepCompare(item, expr, comparator);
+	};
 }
 
 //needed to be invoked first in the test case if predefined filters needed

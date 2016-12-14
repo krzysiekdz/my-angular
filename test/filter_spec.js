@@ -194,6 +194,126 @@ describe("filter", function() {
 			]);
 		});
 
+		it('allows negating string filter', function() {
+			var fn = parse('arr | filter:"!o"');
+			var scope = {arr: [
+				'ala', 'ola', 'ela', 'bolo'
+			]};
+			expect(fn(scope)).toEqual([
+				"ala", 'ela',
+			]);
+			// console.log(fn(scope));
+			// console.log(new AST(new Lexer()).build('arr | filter:"!o"'));
+		});
+
+		it('negating string filter can filter objects', function() {
+			var fn = parse('arr | filter:"!o"');
+			var scope = {arr: [
+				{a: 1, b:'ala'},
+				{a: 2, b:'halo'},
+				{a: 3, b:'ola'},
+			]};
+			expect(fn(scope)).toEqual([
+				{a: 1, b:'ala'},
+			]);
+		});
+
+		it('allows filter by criteria object', function() {
+			var fn = parse('arr | filter:{salary:2000}');
+			var scope = {arr: [
+				{name:'John', salary:2000},
+				{name:'Mike', salary:3000},
+				{name:'Todd', salary:1000},
+				{name:'Jerry', salary:2000},
+			]};
+			expect(fn(scope)).toEqual([
+				{name:'John', salary:2000},
+				{name:'Jerry', salary:2000},
+			]);
+		});
+
+		it('filtering by criteria must match to all properties', function() {
+			var fn = parse('arr | filter:{salary:2000, name:"Jer"}');
+			var scope = {arr: [
+				{name:'John', salary:2000},
+				{name:'Mike', salary:3000},
+				{name:'Todd', salary:1000},
+				{name:'Jerry', salary:2000},
+			]};
+			expect(fn(scope)).toEqual([
+				{name:'Jerry', salary:2000},
+			]);
+		});
+
+		it('matches everythign when filtered an empty object', function() {
+			var fn = parse('arr | filter:{}');
+			var scope = {arr: [
+				{name:'John', salary:2000},
+				{name:'Mike', salary:3000},
+				{name:'Todd', salary:1000},
+				{name:'Jerry', salary:2000},
+			]};
+			expect(fn(scope)).toEqual([
+				{name:'John', salary:2000},
+				{name:'Mike', salary:3000},
+				{name:'Todd', salary:1000},
+				{name:'Jerry', salary:2000},
+			]);
+		});
+
+		it('filtering by criteria must match to all properties', function() {
+			var fn = parse('arr | filter:{name:{first:"o"}}');
+			var scope = {arr: [
+				{name:{first: 'John', last:'Rambo'}, salary:2000},
+				{name:{first: 'Mike', last:'Tyson'}, salary:3000},
+				{name:{first: 'Nick', last:'Jagger'}, salary:4000},
+			]};
+			expect(fn(scope)).toEqual([
+				{name:{first: 'John', last:'Rambo'}, salary:2000},
+			]);
+		});
+
+		it('allows negation when filtering with an object', function() {
+			var fn = parse('arr | filter:{name:{first:"!o"}}');
+			var scope = {arr: [
+				{name:{first: 'John', last:'Rambo'}, salary:2000},
+				{name:{first: 'Mike', last:'Tyson'}, salary:3000},
+				{name:{first: 'Nick', last:'Jagger'}, salary:4000},
+			]};
+			expect(fn(scope)).toEqual([
+				{name:{first: 'Mike', last:'Tyson'}, salary:3000},
+				{name:{first: 'Nick', last:'Jagger'}, salary:4000},
+			]);
+		});
+
+		it('can use a scope prop for filtering with object', function() {
+			var fn = parse('arr | filter:{name:a}');
+			var scope = {arr: [
+				{name: 'ala'},
+				{name: 'ola'},
+			], 
+				a: 'o'};
+			expect(fn(scope)).toEqual([
+				{name: 'ola'},
+			]);
+			
+		});
+
+		it('ignores undefined values in expectation object', function() {
+			var fn = parse('arr | filter:{name:a}');
+			var scope = {arr: [
+				{name: 'ala'},
+				{name: 'ola'},
+			], 
+				// a: 'o'
+			};
+			expect(fn(scope)).toEqual([
+				{name: 'ala'},
+				{name: 'ola'},
+			]);
+			
+		});
+
 	});
 
 });
