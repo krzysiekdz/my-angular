@@ -42,25 +42,27 @@ function filterFilter() {
 
 function createPredicateFn(expr) {
 
-	function deepCompare(actual, expected, compare) {
+	function deepCompare(actual, expected, compare, matchAnyProp) {
 		if(_.isString(expected) && _.startsWith(expected, '!')) {
-			return !deepCompare(actual, expected.substring(1), comparator);
-		}
-		else if (_.isObject(actual)) {
+			return !deepCompare(actual, expected.substring(1), comparator, matchAnyProp);
+		} else if (_.isArray(actual)) {
+			return _.some(actual, function(actualItem) {
+				return deepCompare(actualItem, expected, compare, matchAnyProp);
+			});
+		} else if (_.isObject(actual)) {
 			if(_.isObject(expected)) {//both are objects
 				return _.every(_.toPlainObject(expected), function(expVal, expKey) {
 					if(_.isUndefined(expVal)) {
 						return true;
 					}
-					return deepCompare(actual[expKey], expVal, comparator);
+					return deepCompare(actual[expKey], expVal, comparator, false);
+				});
+			} else if (matchAnyProp) {
+				return _.some(actual, function(actualVal, actualProp) {
+					return deepCompare(actualVal, expected, comparator, matchAnyProp);
 				});
 			} else {
-				for(var key in actual) {
-					if(deepCompare(actual[key], expected, comparator)) {
-						return true;
-					}
-				}
-				return false;
+				return comparator(actual, expected);
 			}
 			
 		} else {
@@ -84,7 +86,7 @@ function createPredicateFn(expr) {
 	}
 
 	return function(item) {
-		return deepCompare(item, expr, comparator);
+		return deepCompare(item, expr, comparator, true);
 	};
 }
 

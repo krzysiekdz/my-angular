@@ -314,6 +314,29 @@ describe("filter", function() {
 			
 		});
 
+		it('filters with a nested object in array', function() {
+			var fn = parse('arr | filter:{users: {name: {first: "o"}}}');
+			var scope = {arr: [
+				{users: [{name:{first:"a"}},{name:{first:"o"}}]},
+				{users: [{name:{first:"a"}},{name:{first:"e"}}]},
+			]};
+			expect(fn(scope)).toEqual([
+				{users: [{name:{first:"a"}},{name:{first:"o"}}]},
+			]);
+		});
+
+		it('filters with a nested object on the same level only', function() {
+			var fn = parse('arr | filter:{user: {name: "Bob"}}');
+			var scope = {arr: [
+				{user: "Bob"},
+				{user: {name: "Bob"}},
+				{user: {name: {first: "Bob", last:"Fox"}}},
+			]};
+			expect(fn(scope)).toEqual([
+				{user: {name: "Bob"}},
+			]);
+		});
+
 	});
 
 });
