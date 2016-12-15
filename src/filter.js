@@ -23,7 +23,7 @@ function filter(name) {
 //---------------------------- filter: filter 
 
 function filterFilter() {
-	return function(arr, filterExpr) {
+	return function(arr, filterExpr, comparator) {
 		var predicateFn;
 		if(_.isFunction(filterExpr)){
 			predicateFn = filterExpr;
@@ -32,7 +32,7 @@ function filterFilter() {
 			_.isBoolean(filterExpr) || 
 			_.isNull(filterExpr) || 
 			_.isObject(filterExpr)) {
-			predicateFn = createPredicateFn(filterExpr);
+			predicateFn = createPredicateFn(filterExpr, comparator);
 		} else {
 			return arr;
 		}
@@ -40,33 +40,33 @@ function filterFilter() {
 	};
 }
 
-function createPredicateFn(expr) {
+function createPredicateFn(expr, userComparator) {
 	var wildcard = false;
 	if(_.isObject(expr) && ('$' in expr))
 		wildcard = true;
 
-	function deepCompare(actual, expected, compare, matchAnyProp) {
+	function deepCompare(actual, expected, compare, matchAnyProp, inWildcard) {
 		if(_.isString(expected) && _.startsWith(expected, '!')) {
-			return !deepCompare(actual, expected.substring(1), comparator, matchAnyProp);
+			return !deepCompare(actual, expected.substring(1), comparator, matchAnyProp, inWildcard);
 		} else if (_.isArray(actual)) {
 			return _.some(actual, function(actualItem) {
-				return deepCompare(actualItem, expected, compare, matchAnyProp);
+				return deepCompare(actualItem, expected, compare, matchAnyProp, inWildcard);
 			});
 		} else if (_.isObject(actual)) {
-			if(_.isObject(expected)) {//both are objects
+			if(_.isObject(expected) && !inWildcard) {//both are objects
 				return _.every(_.toPlainObject(expected), function(expVal, expKey) {
 					if(_.isUndefined(expVal)) {
 						return true;
 					}
 					else if(expKey === '$') { //if wildcard, we treat it, like matchAnyPorp case, so we are taking expVal , for ex. "o" and pass it with actual object; it calls matchAnyProp if
-						return deepCompare(actual, expVal, comparator, true);
+						return deepCompare(actual, expVal, comparator, true, true);//inWildcard === true
 					} else {
-						return deepCompare(actual[expKey], expVal, comparator, false);	
+						return deepCompare(actual[expKey], expVal, comparator, false, inWildcard);	
 					}
 				});
 			} else if (matchAnyProp) {//matchAnyProp if
 				return _.some(actual, function(actualVal, actualProp) {
-					return deepCompare(actualVal, expected, comparator, matchAnyProp);
+					return deepCompare(actualVal, expected, comparator, matchAnyProp, inWildcard);
 				});
 			} else {
 				return comparator(actual, expected);
@@ -95,7 +95,11 @@ function createPredicateFn(expr) {
 	}
 
 	return function(item) {
-		return deepCompare(item, expr, comparator, true);
+		if(userComparator === true) {
+			userComparator = _.isEqual;
+		}
+		comparator = _.isFunction(userComparator)? userComparator: comparator;
+		return deepCompare(item, expr, comparator, true, false);
 	};
 }
 

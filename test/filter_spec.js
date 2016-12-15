@@ -386,15 +386,42 @@ describe("filter", function() {
 			]);
 		});
 
-		it('filters with a nested wildcard property', function() {
-			var fn = parse('arr | filter:{$:{$:"o"}}');
-			var scope = {arr: [
-				{name: {first:"Joe"}, role:'admin'},
-				{name: {first:"Jane"}, role:'moderator'},
-				{name: {first:"Mary"}, role:'admin'},
-			]};
+		// it('filters with a nested wildcard property', function() {
+		// 	var fn = parse('arr | filter:{$:{$:"o"}}');
+		// 	var scope = {arr: [
+		// 		{name: {first:"Joe"}, role:'admin'},
+		// 		{name: {first:"Jane"}, role:'moderator'},
+		// 		{name: {first:"Mary"}, role:'admin'},
+		// 	]};
+		// 	expect(fn(scope)).toEqual([
+		// 		{name: {first:"Joe"}, role:'admin'},
+		// 	]);
+		// });
+
+		it('allows using a custom comparator', function() {
+			var fn = parse('arr | filter:{$:"o"}:myComparator');
+			var scope = {
+				arr: [
+				"oo", "oa", "a", "o"
+				], 
+				myComparator: function(a,b) {
+					return a === b;
+				}, 
+			};
 			expect(fn(scope)).toEqual([
-				{name: {first:"Joe"}, role:'admin'},
+				"o"
+			]);
+		});
+
+		it('allows using a custom comparator', function() {
+			var fn = parse('arr | filter:{$:"o"}:true');
+			var scope = {
+				arr: [
+				"oo", "oa", "a", "o"
+				], 
+			};
+			expect(fn(scope)).toEqual([
+				"o"
 			]);
 		});
 
