@@ -41,6 +41,9 @@ function filterFilter() {
 }
 
 function createPredicateFn(expr) {
+	var wildcard = false;
+	if(_.isObject(expr) && ('$' in expr))
+		wildcard = true;
 
 	function deepCompare(actual, expected, compare, matchAnyProp) {
 		if(_.isString(expected) && _.startsWith(expected, '!')) {
@@ -55,9 +58,13 @@ function createPredicateFn(expr) {
 					if(_.isUndefined(expVal)) {
 						return true;
 					}
-					return deepCompare(actual[expKey], expVal, comparator, false);
+					else if(expKey === '$') { //if wildcard, we treat it, like matchAnyPorp case, so we are taking expVal , for ex. "o" and pass it with actual object; it calls matchAnyProp if
+						return deepCompare(actual, expVal, comparator, true);
+					} else {
+						return deepCompare(actual[expKey], expVal, comparator, false);	
+					}
 				});
-			} else if (matchAnyProp) {
+			} else if (matchAnyProp) {//matchAnyProp if
 				return _.some(actual, function(actualVal, actualProp) {
 					return deepCompare(actualVal, expected, comparator, matchAnyProp);
 				});
@@ -66,6 +73,8 @@ function createPredicateFn(expr) {
 			}
 			
 		} else {
+			if(wildcard)
+				return comparator(actual, expr.$);
 			return comparator(actual, expected);
 		}
 	}
@@ -74,8 +83,8 @@ function createPredicateFn(expr) {
 		if(_.isNull(actual) || _.isNull(expected)) {//that means null never will be converted into string
 			return actual === expected;
 		} else if (_.isUndefined(actual) || _.isUndefined(expected)) {
-			return false;
-		} else if(_.isObject(expected)) { //this situation may happen
+			return false;	
+		} else if(_.isObject(expected) || _.isObject(actual)) { //this situation may happen
 			return false;
 		}
 		else {
