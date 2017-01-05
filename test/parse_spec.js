@@ -922,6 +922,12 @@ describe("parse", function(){
 		expect(res).toEqual(6);
 	});
 
+	it('test', function() {
+		var scope = {obj: {a: 10, fn: function(){return this.a;}}};
+		var res = parse('obj.fn()')(scope);
+		console.log(res);
+	});
+
 
 	// it('does not allow accessing __defineSetter__', function() {
 	// 	var tokens;

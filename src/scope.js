@@ -1,5 +1,6 @@
 /* jshint globalstrict: true */
 /* global forEach:false */
+/* global parse:false */
 'use strict'; 
 
 //--------------scope's core
@@ -30,7 +31,7 @@ function initWatchVal(){}
 Scope.prototype.$watch = function(watchFn, listenerFn, valueEq) {
 	this.$root.$$lastDirtyWatch = null;//kazde wywolanie watch zeruje watchery, tak, ze trzeba je sprawdzic wszystkie od nowa
 	var watcher = {
-		watchFn: watchFn,
+		watchFn: parse(watchFn),
 		listenerFn: listenerFn || function(){},
 		last: initWatchVal,
 		valueEq: !!valueEq,
@@ -92,7 +93,7 @@ Scope.prototype.$digest = function() {
 	this.$clearPhase();
 };
 
-//wyobrazac sobie model angulara z kuleczkami :)
+//wyobrazac sobie model angulara z kuleczkami :) - that menas - imagine yourself an "angulars machine"
 Scope.prototype.$digestOnce = function() {
 	var dirty = false;//dirty odnosi sie do całego cyklu digestOnce
 	var continueLoop = true;//tylko po to, aby zoptymalizowac przeszukiwanie calego zbioru - to samo co lastDirtyWatch tylko ze dla przeszukiwania rekurencynego
@@ -134,6 +135,7 @@ Scope.prototype.$areEqual = function(newVal, oldVal, valueEq) {
 };
 
 Scope.prototype.$eval = function(fn, args) {
+	fn = parse(fn);
 	return fn(this, args);
 };
 
@@ -148,7 +150,7 @@ Scope.prototype.$apply = function(fn, args) {
 };
 
 //czy nie powinno zerowac lastDirtyWatch?
-Scope.prototype.$evalAsync = function(fn, args) {
+Scope.prototype.$evalAsync = function(fn, args) {//in every digest cycle, applyAsync is executed once in all digest
 	var self = this;
 	if(!this.$$phase && !this.$$asyncQueue.length) {
 		setTimeout(function() {
@@ -261,7 +263,7 @@ Scope.prototype.$watchGroup = function(watchFns, listenerFn, valueEq) {
 
 //----------------------- scope's inheritance
 
-Scope.prototype.$new = function(isolated, parent) {
+Scope.prototype.$new = function(isolated, parent) {//parent - has 'child' as its own child; this - if isolated==false means this will be inherited to child
 	var child;
 	parent = parent || this;
 	if(isolated) {
@@ -305,7 +307,7 @@ Scope.prototype.$destroy = function() {
 
 	this.$broadcast('$destroy');//event's system - informuje children o tym, ze ich rodzic-czyli ten scope, jest usuniety i one powinny zwolnic zajmowane zasoby, jesli moga to zrobic w sposob jawny
 
-	if(this.$parent) { //$root nie ma parent'a
+	if(this.$parent) { //$root has no parent
 		var i = this.$parent.$$children.indexOf(this);
 		if(i >= 0) {
 			this.$parent.$$children.splice(i, 1);
@@ -331,6 +333,7 @@ Scope.prototype.$watchCollection = function(watchFn, listenerFn) {
 
 	//ta funkcja ma za zadanie sledzic zmiany w kolekcji, zwraca natomiast licznik ktory jest podibjany jesli zmiana zaszla
 	function internalWatchFn(scope) {
+		watchFn = parse(watchFn);
 		newValue = watchFn(scope);
 
 		if(_.isObject(newValue)) {

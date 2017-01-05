@@ -4,9 +4,17 @@
 
 //takes expression string, returns function that executes expresssion in certain context
 function parse(expr) {
-	var lexer = new Lexer();
-	var parser = new Parser(lexer);
-	return parser.parse(expr);
+	switch(typeof expr) {
+		case 'string' :
+			var lexer = new Lexer();
+			var parser = new Parser(lexer);
+			return parser.parse(expr);
+		case 'function' : 
+			return expr;
+		default: 
+			return function() {return undefined;};
+	}
+	
 }
 
 //what for is that? we can deal without it, but it is educational purpose
@@ -675,7 +683,7 @@ ASTCompiler.prototype.compile = function(text) {
 	resultCode += this.state.body.join('');
 	resultCode += '}; return fn;';
 
-	console.log(resultCode);
+	// console.log(resultCode);
 
 	/* jshint -W054 */
 	return new Function(
