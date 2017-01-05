@@ -574,7 +574,7 @@ AST.prototype.parseArguments = function() {
 	var args = [];
 	if(! this.peek(')')) {
 		do {
-			args.push(this.assign());
+			args.push(this.filter());
 		} while(this.expect(','));
 	}
 
@@ -589,7 +589,7 @@ AST.prototype.arrayDeclaration = function() {
 			if(this.peek(']')) {
 				break;
 			}
-			elements.push(this.assign());
+			elements.push(this.filter());
 		} while(this.expect(','));
 	}
 	this.consume(']');
@@ -620,7 +620,7 @@ AST.prototype.objectDeclaration = function() {
 			colon = this.expect(':');
 
 			if(colon) { //if colon exists, we have somthing like {a:5}
-				prop.val = this.assign(); //val musn't be only Literal
+				prop.val = this.filter(); //val musn't be only Literal
 				props.push(prop);
 			} else { //if colon doesnt exist, we probably have something like {a,b} where a and b are variables
 				throw 'Expected \':\', got something else.';
@@ -686,7 +686,7 @@ ASTCompiler.prototype.compile = function(text) {
 	// console.log(resultCode);
 
 	/* jshint -W054 */
-	return new Function(
+	var fn = new Function(
 		'ensureSafeMemberName, ensureSafeObject, ensureSafeFunction, ifDefined, filter', 
 		resultCode)(
 		this.ensureSafeMemberName, 
@@ -695,6 +695,8 @@ ASTCompiler.prototype.compile = function(text) {
 		this.ifDefined, 
 		filter);
 	/* jshint +W054 */
+	fn.literal = this.isLiteral(ast);
+	return fn;
 };
 
 ASTCompiler.prototype.recurse = function(ast, context, create) {
@@ -969,6 +971,13 @@ ASTCompiler.prototype.ensureSafeFunction = function(obj) {
 
 ASTCompiler.prototype.ifDefined = function(value, def) {
 	return typeof value === 'undefined' ? def:value;
+};
+
+ASTCompiler.prototype.isLiteral = function(ast) {
+	return ast.body.length === 0 || ast.body.length === 1 && (
+		ast.body[0].type === AST.Literal || 
+		ast.body[0].type === AST.ArrayExpression || 
+		ast.body[0].type === AST.ObjectExpression );
 };
 
 //-------------------- Parser 

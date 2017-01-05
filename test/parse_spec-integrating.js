@@ -58,6 +58,47 @@ describe("parse", function(){
 			});
 		});
 
+		it('marks integers literal', function() {
+			var fn = parse('42');
+			expect(fn.literal).toBe(true);
+		});
+
+		it('marks string literal', function() {
+			var fn = parse('"abc"');
+			expect(fn.literal).toBe(true);
+		});
+
+		it('marks boolean literal', function() {
+			var fn = parse('true');
+			expect(fn.literal).toBe(true);
+		});
+
+		it('marks arrays literal', function() {
+			var fn = parse('[1,2, "ab", variable]');
+			expect(fn.literal).toBe(true);
+		});
+
+		it('marks objects literal', function() {
+			var fn = parse('{a:1, b:"2", c:ala}');
+			expect(fn.literal).toBe(true);
+		});
+
+		it('marks unary expressions non-literal', function() {
+			var fn = parse('!true');
+			expect(fn.literal).toBe(false);
+		});
+
+		it('marks binary expressions non-literal', function() {
+			var fn = parse('1+2');
+			expect(fn.literal).toBe(false);
+		});
+
+		it('test', function() {
+			// var fn = parse('[1,2, 3+4*2]');
+			var ast = new AST(new Lexer()).build('[1,2,3*4+2]');
+			console.log(ast);
+		});
+
 	});
 	
 });
