@@ -8,7 +8,9 @@ function parse(expr) {
 		case 'string' :
 			var lexer = new Lexer();
 			var parser = new Parser(lexer);
-			return parser.parse(expr);
+			var fn = parser.parse(expr);
+
+			return fn;
 		case 'function' : 
 			return expr;
 		default: 
@@ -673,6 +675,7 @@ var BIND = Function.prototype.bind;
 
 ASTCompiler.prototype.compile = function(text) {
 	var ast = this.ast.build(text);//build ast tree
+	this.markConstantExpressions(ast);
 	this.state = {body: [], nextId: 0, vars: [], filters: {}};
 	this.recurse(ast);//przechodzi po drzewie ast, ktore jest juz zbudowane i tworzy z niego funkcję, tj kompiluje drzewo
 
@@ -696,6 +699,7 @@ ASTCompiler.prototype.compile = function(text) {
 		filter);
 	/* jshint +W054 */
 	fn.literal = this.isLiteral(ast);
+	fn.constant = ast.constant;
 	return fn;
 };
 
@@ -978,6 +982,98 @@ ASTCompiler.prototype.isLiteral = function(ast) {
 		ast.body[0].type === AST.Literal || 
 		ast.body[0].type === AST.ArrayExpression || 
 		ast.body[0].type === AST.ObjectExpression );
+};
+
+ASTCompiler.prototype.markConstantExpressions = function(ast) {
+	var self = this;
+	var allConstants = true;
+	switch(ast.type) {
+		case AST.Program: 
+			_.forEach(ast.body, function(expr) {
+				self.markConstantExpressions(expr);
+				allConstants = allConstants && expr.constant;
+				if(!allConstants) {
+					return false;	//stop iterating, because we known the result
+				}
+			});
+			ast.constant = allConstants;
+			break;
+		case AST.Literal: 
+			ast.constant = true;
+			break;
+		case AST.ThisExpression: 
+			ast.constant = false;
+			break;
+		case AST.Identifier: 
+			ast.constant = false;
+			break;
+		case AST.ArrayExpression: 
+			_.forEach(ast.elements, function(expr) {
+				self.markConstantExpressions(expr);
+				allConstants = allConstants && expr.constant;
+				if(!allConstants) {
+					return false;	//stop iterating, because we known the result
+				}
+			});
+			ast.constant = allConstants;
+			break;	
+		case AST.ObjectExpression: 
+			_.forEach(ast.props, function(expr) {
+				self.markConstantExpressions(expr.val);
+				allConstants = allConstants && expr.val.constant;
+				if(!allConstants) {
+					return false;	//stop iterating, because we known the result
+				}
+			});
+			ast.constant = allConstants;
+			break;	
+		case AST.MemberExpression: 
+			self.markConstantExpressions(ast.object);
+			if(ast.computed) {
+				self.markConstantExpressions(ast.property);
+			}
+			ast.constant = ast.object.constant && (!ast.computed || ast.property.constant);
+			break;
+		case AST.CallExpression: 
+			if(ast.filter) {
+				_.forEach(ast.arguments, function(arg) {
+					self.markConstantExpressions(arg);
+					allConstants = allConstants && arg.constant;
+					if(!allConstants) {
+						return false;	//stop iterating, because we known the result
+					}
+				});
+				ast.constant = allConstants;
+			} else {
+				ast.constant = false;
+			}
+			break;
+		case AST.AssignmentExpression: 
+			this.markConstantExpressions(ast.left);
+			this.markConstantExpressions(ast.right);
+			ast.constant = ast.left.constant && ast.right.constant;
+			break;
+		case AST.UnaryExpression: 
+			this.markConstantExpressions(ast.left);
+			ast.constant = ast.left.constant;
+			break;
+		case AST.BinaryExpression: 
+			this.markConstantExpressions(ast.left);
+			this.markConstantExpressions(ast.right);
+			ast.constant = ast.left.constant && ast.right.constant;
+			break;
+		case AST.LogicalExpression: 
+			this.markConstantExpressions(ast.left);
+			this.markConstantExpressions(ast.right);
+			ast.constant = ast.left.constant && ast.right.constant;
+			break;
+		case AST.TernaryExpression: 
+			this.markConstantExpressions(ast.left);
+			this.markConstantExpressions(ast.right);
+			this.markConstantExpressions(ast.cond);
+			ast.constant = ast.cond.constant && ast.left.constant && ast.right.constant;
+			break;
+	}
 };
 
 //-------------------- Parser 
