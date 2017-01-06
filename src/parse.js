@@ -9,7 +9,9 @@ function parse(expr) {
 			var lexer = new Lexer();
 			var parser = new Parser(lexer);
 			var fn = parser.parse(expr);
-
+			if(fn.constant) {
+				fn.$$watchDelegate = constantWatchDelegate;
+			}
 			return fn;
 		case 'function' : 
 			return expr;
@@ -17,6 +19,22 @@ function parse(expr) {
 			return function() {return undefined;};
 	}
 	
+}
+
+//this watch executes only once
+function constantWatchDelegate(scope, watchFn, listenerFn, valueEq) {
+	var unwatch = scope.$watch(
+		function() {
+			return watchFn(scope);
+		}, function(n,o,s) {
+			if(_.isFunction(listenerFn)) {
+				listenerFn(n,o,s);
+			}
+			unwatch();
+		},
+		valueEq
+	);
+	return unwatch;
 }
 
 //what for is that? we can deal without it, but it is educational purpose

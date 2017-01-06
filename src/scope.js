@@ -30,8 +30,14 @@ function initWatchVal(){}
 //watchFn wykonuje sie zawsze przy kazdym digest chociaz raz, listenerFn tylko w wypadku zmiany wartosci
 Scope.prototype.$watch = function(watchFn, listenerFn, valueEq) {
 	this.$root.$$lastDirtyWatch = null;//kazde wywolanie watch zeruje watchery, tak, ze trzeba je sprawdzic wszystkie od nowa
+	watchFn = parse(watchFn);
+
+	if(watchFn.$$watchDelegate) {
+		return watchFn.$$watchDelegate(this, watchFn, listenerFn, valueEq);
+	}
+
 	var watcher = {
-		watchFn: parse(watchFn),
+		watchFn: watchFn,
 		listenerFn: listenerFn || function(){},
 		last: initWatchVal,
 		valueEq: !!valueEq,
