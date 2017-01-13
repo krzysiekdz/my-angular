@@ -207,6 +207,92 @@ describe("parse", function(){
 			expect(scope.$$watchers.length).toBe(0);
 		});
 
+		it('accepts one-time watches', function() {
+			var scope = new Scope();
+			var a;
+			scope.a = 12;
+			scope.$watch('::a', function(n,o,s) {
+				a = n;
+			});
+			scope.$digest();
+
+			expect(a).toBe(12);
+		});
+
+		it('accepts one-time watches', function() {
+			var scope = new Scope();
+			scope.a = 12;
+			scope.$watch('::a', function(n,o,s) {});
+			scope.$digest();
+
+			expect(scope.$$watchers.length).toBe(0);
+		});
+
+		it('does not remove one-time watches until value is defined', function() {
+			var scope = new Scope();
+			scope.$watch('::a', function(n,o,s) {});
+			scope.$digest();
+			expect(scope.$$watchers.length).toBe(1);
+
+			scope.$digest();
+			expect(scope.$$watchers.length).toBe(1);
+
+			scope.a = 10;
+			scope.$digest();
+			expect(scope.$$watchers.length).toBe(0);
+		});
+
+		it('does not remove one-time watches until value stays defined', function() {
+			var scope = new Scope();
+			scope.a = 2;
+			scope.$watch('::a', function(n,o,s) {});
+
+			var unwatchDeleter = scope.$watch('a', function() {
+				delete scope.a;
+			});
+
+			scope.$digest();
+			expect(scope.$$watchers.length).toBe(2);
+
+			scope.$digest();
+			expect(scope.$$watchers.length).toBe(2);
+
+			scope.a = 10;
+			unwatchDeleter();
+			scope.$digest();
+			expect(scope.$$watchers.length).toBe(0);
+		});
+
+		it('does not remove one-time watches before all array items defined', function() {
+			var scope = new Scope();
+			scope.$watch('::[1,2,a]', function(n,o,s) {}, true);
+
+			scope.$digest();
+			expect(scope.$$watchers.length).toBe(1);
+
+			scope.$digest();
+			expect(scope.$$watchers.length).toBe(1);
+
+			scope.a = 10;
+			scope.$digest();
+			expect(scope.$$watchers.length).toBe(0);
+		});
+
+		it('does not remove one-time watches before all array items defined', function() {
+			var scope = new Scope();
+			scope.$watch('::{a:1, b:2, c:d}', function(n,o,s) {}, true);
+
+			scope.$digest();
+			expect(scope.$$watchers.length).toBe(1);
+
+			scope.$digest();
+			expect(scope.$$watchers.length).toBe(1);
+
+			scope.d = 10;
+			scope.$digest();
+			expect(scope.$$watchers.length).toBe(0);
+		});
+
 	});
 	
 });

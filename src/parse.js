@@ -8,13 +8,27 @@ function parse(expr) {
 		case 'string' :
 			var lexer = new Lexer();
 			var parser = new Parser(lexer);
+
+			var oneTime = false;
+			if(expr.charAt(0) === ':' && expr.charAt(1) === ':') {
+				oneTime = true;
+				expr = expr.substring(2);
+			}
+
 			var fn = parser.parse(expr);
+
 			if(fn.constant) {
 				fn.$$watchDelegate = constantWatchDelegate;
+			} else if (oneTime) {
+				fn.$$watchDelegate = fn.literal ?  oneTimeLiteralWatchDelegate : oneTimeWatchDelegate;
 			}
+
 			return fn;
+
+
 		case 'function' : 
 			return expr;
+
 		default: 
 			return function() {return undefined;};
 	}
@@ -36,6 +50,59 @@ function constantWatchDelegate(scope, watchFn, listenerFn, valueEq) {
 	);
 	return unwatch;
 }
+
+//watch for one-time expressions
+function oneTimeWatchDelegate(scope, watchFn, listenerFn, valueEq) {
+	var last;
+	var unwatch = scope.$watch(
+		function() {
+			return watchFn(scope);
+		}, function(n,o,s) {
+			last = n;
+			if(_.isFunction(listenerFn)) {
+				listenerFn(n,o,s);
+			}
+			if(!_.isUndefined(n)) {
+				scope.$$postDigest(function() {
+					// console.log(n,last);
+					if(!_.isUndefined(last)) {
+						unwatch();
+					}
+				})
+			}
+		},
+		valueEq
+	);
+	return unwatch;
+}
+
+//watch delegate for literal one-time expression, for ex: "::[a, b, 'ala', 2]"; "::a" - is not literal, is identifier
+function oneTimeLiteralWatchDelegate(scope, watchFn, listenerFn, valueEq) {
+	var last;
+	function isAllDefined(val) {
+		return !_.some(val, _.isUndefined);
+	}
+	var unwatch = scope.$watch(
+		function() {
+			return watchFn(scope);
+		}, function(n,o,s) {
+			last = n;
+			if(_.isFunction(listenerFn)) {
+				listenerFn(n,o,s);
+			}
+			if(isAllDefined(n)) {
+				scope.$$postDigest(function() {
+					if(isAllDefined(last)) {
+						unwatch();
+					}
+				})
+			}
+		},
+		valueEq
+	);
+	return unwatch;
+}
+
 
 //what for is that? we can deal without it, but it is educational purpose
 var ESCAPE = {'n': '\n', 't':'\t', 'f':'\f', 'r':'\r', 'v':'\v', '\'':"\'", '"':'\"', '\\': '\\'};
