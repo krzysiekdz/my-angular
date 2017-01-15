@@ -795,14 +795,23 @@ var BIND = Function.prototype.bind;
 ASTCompiler.prototype.compile = function(text) {
 	var ast = this.ast.build(text);//build ast tree
 	this.markConstantExpressions(ast);
-	this.state = {body: [], nextId: 0, vars: [], filters: {}};
+	this.state = {
+		fn: {
+			body: [],
+			vars: [],
+		},
+		nextId: 0,  
+		filters: {},
+	};
+	this.state.computing = 'fn';
+
 	this.recurse(ast);//przechodzi po drzewie ast, ktore jest juz zbudowane i tworzy z niego funkcję, tj kompiluje drzewo
 
 	//rebuilding function that we can pass function esnsureSafeMemberName to it and other arguments
 	var resultCode = this.filterPrefix();
 	resultCode += ' var fn = function(scope, locals) {';
-	resultCode += this.state.vars.length? 'var ' +  this.state.vars.join(',') + ';' : '';
-	resultCode += this.state.body.join('');
+	resultCode += this.state.fn.vars.length? 'var ' +  this.state.fn.vars.join(',') + ';' : '';
+	resultCode += this.state.fn.body.join('');
 	resultCode += '}; return fn;';
 
 	// console.log(resultCode);
@@ -827,7 +836,7 @@ ASTCompiler.prototype.recurse = function(ast, context, create) {
 	var left, right, body;
 	switch(ast.type) {
 		case AST.Program: 
-			body = this.state.body;
+			body = this.state[this.state.computing].body;
 			for(var i = 0; i < ast.body.length-1; i++) {
 				body.push(this.recurse(ast.body[i]), ';');
 			}
@@ -881,7 +890,7 @@ ASTCompiler.prototype.recurse = function(ast, context, create) {
 			}
 			if(ast.computed) {
 				right = this.recurse(ast.property);	
-				this.state.body.push(' ensureSafeMemberName(' + right +'); ');
+				this.addCode(' ensureSafeMemberName(' + right +'); ');
 				if(create) {
 					this.if_(this.not(this.computedMember(left, right)), 
 						this.assign(this.computedMember(left, right), '{}'));
@@ -956,7 +965,7 @@ ASTCompiler.prototype.recurse = function(ast, context, create) {
 			return  '(' + left + ') ' + ast.operator + ' (' + right + ') ' ;
 		case AST.LogicalExpression : 
 			v = this.nextId();
-			this.state.body.push(this.assign(v, this.recurse(ast.left)));
+			this.addCode(this.assign(v, this.recurse(ast.left)));
 			this.if_(ast.operator === '&&' ? v: this.not(v), 
 				this.assign(v, this.recurse(ast.right)));
 			return v;
@@ -977,7 +986,7 @@ ASTCompiler.prototype.recurse = function(ast, context, create) {
 //adds if clause to the output code; adding attempts before adding 'return' code
 ASTCompiler.prototype.if_ = function(condition, statement) {
 	var code = 'if (' + condition + ') {' + statement + '} ';
-	this.state.body.push(code);
+	this.addCode(code);
 };
 
 ASTCompiler.prototype.assign = function(ident, value) {
@@ -1005,7 +1014,7 @@ ASTCompiler.prototype.filterPrefix = function() {
 };
 
 ASTCompiler.prototype.addCode = function(code) {
-	this.body.state.push(code);
+	this.state[this.state.computing].body.push(code);
 };
 
 ASTCompiler.prototype.not = function(expr) {
@@ -1023,17 +1032,17 @@ ASTCompiler.prototype.getHasOwnProperty = function(obj, prop) {
 ASTCompiler.prototype.nextId = function(skip) {
 	var id = 'v' + this.state.nextId++;
 	if(!skip) {
-		this.state.vars.push(id);
+		this.state[this.state.computing].vars.push(id);
 	}
 	return id;
 };
 
 ASTCompiler.prototype.ensureSafeObjectCode = function(obj) {
-	this.state.body.push(' ensureSafeObject(' + obj +'); ');
+	this.addCode(' ensureSafeObject(' + obj +'); ');
 };
 
 ASTCompiler.prototype.ensureSafeFunctionCode = function(obj) {
-	this.state.body.push(' ensureSafeFunction(' + obj +'); ');
+	this.addCode(' ensureSafeFunction(' + obj +'); ');
 };
 
 ASTCompiler.prototype.nonComputedMember = function(left, right) {
