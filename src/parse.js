@@ -20,7 +20,9 @@ function parse(expr) {
 			if(fn.constant) {
 				fn.$$watchDelegate = constantWatchDelegate;
 			} else if (oneTime) {
-				fn.$$watchDelegate = fn.literal ?  oneTimeLiteralWatchDelegate : oneTimeWatchDelegate;
+				fn.$$watchDelegate = fn.literal ? oneTimeLiteralWatchDelegate : oneTimeWatchDelegate;
+			} else if (fn.inputs) {
+				fn.$$watchDelegate = inputsWatchDelegate;
 			}
 
 			return fn;
@@ -101,6 +103,33 @@ function oneTimeLiteralWatchDelegate(scope, watchFn, listenerFn, valueEq) {
 		valueEq
 	);
 	return unwatch;
+}
+
+function inputsWatchDelegate(scope, watchFn, listnerFn, valueEq) {
+	var inputExpressions = watchFn.inputs;
+	var oldValues = _.times(inputExpressions.length, _.constant(function() {}));
+	var lastResult;
+	return scope.$watch(function() {
+		var changed = false;
+		_.forEach(inputExpressions, function(inputExpr, i) {
+			var newValue = inputExpr(scope);
+			if(changed || !exprInputDirtyCheck(newValue, oldValues[i])) {
+				oldValues[i] = newValue;
+				changed = true;
+			}
+		});
+		if(changed) {
+			lastResult = watchFn(scope);
+		}
+		return lastResult;
+
+	}, listnerFn, valueEq);
+}
+
+function exprInputDirtyCheck(newVal, oldVal) {
+	return newVal === oldVal || 
+		(typeof newVal === 'number' && typeof oldVal === 'number' && 
+			isNaN(newVal) && isNaN(oldVal));
 }
 
 
@@ -749,7 +778,12 @@ AST.prototype.consume = function(e) {
 };
 
 
+
+
+
 //-------------------- Compiler
+
+
 function ASTCompiler(ast) {
 	this.ast = ast;
 }
@@ -1072,45 +1106,59 @@ ASTCompiler.prototype.isLiteral = function(ast) {
 ASTCompiler.prototype.markConstantExpressions = function(ast) {
 	var self = this;
 	var allConstants = true;
+	var argsToWatch;
 	switch(ast.type) {
 		case AST.Program: 
 			_.forEach(ast.body, function(expr) {
 				self.markConstantExpressions(expr);
 				allConstants = allConstants && expr.constant;
-				if(!allConstants) {
-					return false;	//stop iterating, because we known the result
-				}
+				// if(!allConstants) {
+				// 	return false;	//stop iterating, because we known the result
+				// }
 			});
 			ast.constant = allConstants;
 			break;
 		case AST.Literal: 
 			ast.constant = true;
+			ast.toWatch = [];
 			break;
 		case AST.ThisExpression: 
 			ast.constant = false;
+			ast.toWatch = [];
 			break;
 		case AST.Identifier: 
 			ast.constant = false;
+			ast.toWatch = [ast];
 			break;
 		case AST.ArrayExpression: 
+			argsToWatch = [];
 			_.forEach(ast.elements, function(expr) {
 				self.markConstantExpressions(expr);
 				allConstants = allConstants && expr.constant;
-				if(!allConstants) {
-					return false;	//stop iterating, because we known the result
+				if(!expr.constant) {
+					argsToWatch.push.apply(argsToWatch, expr.toWatch);
 				}
+				// if(!allConstants) {
+				// 	return false;	//stop iterating, because we known the result
+				// }
 			});
 			ast.constant = allConstants;
+			ast.toWatch = argsToWatch;
 			break;	
 		case AST.ObjectExpression: 
+			argsToWatch = [];
 			_.forEach(ast.props, function(expr) {
 				self.markConstantExpressions(expr.val);
 				allConstants = allConstants && expr.val.constant;
-				if(!allConstants) {
-					return false;	//stop iterating, because we known the result
+				if(!expr.val.constant) {
+					argsToWatch.push.apply(argsToWatch, expr.val.toWatch);
 				}
+				// if(!allConstants) {
+				// 	return false;	//stop iterating, because we known the result
+				// }
 			});
 			ast.constant = allConstants;
+			ast.toWatch = argsToWatch;
 			break;	
 		case AST.MemberExpression: 
 			self.markConstantExpressions(ast.object);
@@ -1118,45 +1166,78 @@ ASTCompiler.prototype.markConstantExpressions = function(ast) {
 				self.markConstantExpressions(ast.property);
 			}
 			ast.constant = ast.object.constant && (!ast.computed || ast.property.constant);
+			ast.toWatch = [];
+			if(!ast.constant) {
+				ast.toWatch.push(ast);
+			}
 			break;
 		case AST.CallExpression: 
+		argsToWatch = [];
 			if(ast.filter) {
 				_.forEach(ast.arguments, function(arg) {
 					self.markConstantExpressions(arg);
 					allConstants = allConstants && arg.constant;
-					if(!allConstants) {
-						return false;	//stop iterating, because we known the result
+					if(!arg.constant) {
+						argsToWatch.push.apply(argsToWatch, arg.toWatch);
 					}
+					// if(!allConstants) {
+					// 	return false;	//stop iterating, because we known the result
+					// }
 				});
 				ast.constant = allConstants;
 			} else {
 				ast.constant = false;
 			}
+
+			ast.toWatch = ast.filter ? argsToWatch : [ast];
 			break;
 		case AST.AssignmentExpression: 
 			this.markConstantExpressions(ast.left);
 			this.markConstantExpressions(ast.right);
 			ast.constant = ast.left.constant && ast.right.constant;
+			ast.toWatch = [];
+			if(!ast.constant) {
+				ast.toWatch.push(ast);	
+			}
 			break;
 		case AST.UnaryExpression: 
 			this.markConstantExpressions(ast.left);
 			ast.constant = ast.left.constant;
+			ast.toWatch = [];
+			if(!ast.constant) {
+				ast.toWatch.push(ast.left);	
+			}
 			break;
 		case AST.BinaryExpression: 
 			this.markConstantExpressions(ast.left);
 			this.markConstantExpressions(ast.right);
 			ast.constant = ast.left.constant && ast.right.constant;
+			ast.toWatch = [];
+			if(!ast.left.constant) {
+				ast.toWatch.push(ast.left);
+			}
+			if(!ast.right.constant) {
+				ast.toWatch.push(ast.right);
+			}
 			break;
 		case AST.LogicalExpression: 
 			this.markConstantExpressions(ast.left);
 			this.markConstantExpressions(ast.right);
 			ast.constant = ast.left.constant && ast.right.constant;
+			ast.toWatch = [];
+			if(!ast.constant) {
+				ast.toWatch.push(ast);	
+			}
 			break;
 		case AST.TernaryExpression: 
 			this.markConstantExpressions(ast.left);
 			this.markConstantExpressions(ast.right);
 			this.markConstantExpressions(ast.cond);
 			ast.constant = ast.cond.constant && ast.left.constant && ast.right.constant;
+			ast.toWatch = [];
+			if(!ast.constant) {
+				ast.toWatch.push(ast);	
+			}
 			break;
 	}
 };

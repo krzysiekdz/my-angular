@@ -293,6 +293,31 @@ describe("parse", function(){
 			expect(scope.$$watchers.length).toBe(0);
 		});
 
+		it('does not re-evaluate an array if its contents do not change', function() {
+			var scope = new Scope();
+			var arr = [];
+			scope.a = 1;
+			scope.b = 2;
+			scope.c = 3;
+			scope.$watch('[a,b,c]', function(n,o,s) {
+				arr.push(n);
+			});
+
+			// try {
+				scope.$digest();
+				expect(arr.length).toBe(1);
+				expect(arr[0]).toEqual([1,2,3]);
+			// } catch(e){console.log(arr);}
+
+			scope.$digest();
+			expect(arr.length).toBe(1);
+
+			scope.c = 10;
+			scope.$digest();
+			expect(arr.length).toBe(2);
+			expect(arr[1]).toEqual([1,2,10]);
+		});
+
 	});
 	
 });
