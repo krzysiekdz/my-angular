@@ -3,11 +3,11 @@
 'use strict';
 
 //takes expression string, returns function that executes expresssion in certain context
-function parse(expr) {
+function parse(expr, verbose) {
 	switch(typeof expr) {
 		case 'string' :
 			var lexer = new Lexer();
-			var parser = new Parser(lexer);
+			var parser = new Parser(lexer, verbose);
 
 			var oneTime = false;
 			if(expr.charAt(0) === ':' && expr.charAt(1) === ':') {
@@ -426,10 +426,15 @@ Lexer.prototype.is = function(e) {
 	return e.indexOf(this.ch) > -1 ? true:false;
 };
 
-//--------------------
 
+
+//--------------------
 //-------------------- AST - is like parser; reads tokens from lexer and checks grammar
 // for example, arrays will be checked here, not in lexer, becaues they are grammar constructs
+
+
+
+
 function AST(lexer) {
 	this.lexer = lexer;
 }
@@ -786,15 +791,39 @@ AST.prototype.consume = function(e) {
 
 function ASTCompiler(ast) {
 	this.ast = ast;
+	this.verbose = false;
 }
+
+ASTCompiler.prototype.setVerbose = function(v) {
+	this.verbose = v;
+}
+
+var globalVerbose = false;
 
 var CALL = Function.prototype.call;
 var APPLY = Function.prototype.apply;
 var BIND = Function.prototype.bind;
 
+ASTCompiler.prototype.markConstantAndTrackInputExpressions = function(ast) {
+	this.markConstantExpressions(ast);
+};
+
+ASTCompiler.prototype.getToWatch = function(ast) {
+	if(ast.length !== 1) {
+		return;
+	}
+	var toWatch = ast[0].toWatch;//toWatch may be the same object, that is: ast[0] = ast[0].toWatch
+	if(toWatch.length !== 1 || toWatch[0] !== ast[0]) {
+		// if(this.verbose || globalVerbose) {
+		// 	console.log(toWatch, ast);
+		// }
+		return toWatch;
+	}
+}
+
 ASTCompiler.prototype.compile = function(text) {
 	var ast = this.ast.build(text);//build ast tree
-	this.markConstantExpressions(ast);
+	this.markConstantAndTrackInputExpressions(ast);
 	this.state = {
 		fn: {
 			body: [],
@@ -802,9 +831,20 @@ ASTCompiler.prototype.compile = function(text) {
 		},
 		nextId: 0,  
 		filters: {},
+		inputs: [],
 	};
-	this.state.computing = 'fn';
+	var self = this;
+	_.forEach(this.getToWatch(ast.body), function(input, i) {
+		var fnX = 'fn' + i;
+		self.state[fnX] = {body: [], vars: []};
+		self.state.computing = fnX;
+		var v = self.recurse(input)
+		self.state[fnX].body.push(' return ' + v + ';');
+		self.state.inputs.push(fnX);
+		// console.log(self.state[fnX].body.join(''));
+	});
 
+	this.state.computing = 'fn';
 	this.recurse(ast);//przechodzi po drzewie ast, ktore jest juz zbudowane i tworzy z niego funkcję, tj kompiluje drzewo
 
 	//rebuilding function that we can pass function esnsureSafeMemberName to it and other arguments
@@ -812,9 +852,11 @@ ASTCompiler.prototype.compile = function(text) {
 	resultCode += ' var fn = function(scope, locals) {';
 	resultCode += this.state.fn.vars.length? 'var ' +  this.state.fn.vars.join(',') + ';' : '';
 	resultCode += this.state.fn.body.join('');
-	resultCode += '}; return fn;';
+	resultCode += '}; '  +  this.watchFns() + ' return fn;';
 
-	// console.log(resultCode);
+	if(this.verbose || globalVerbose) {
+		console.log(resultCode);
+	}
 
 	/* jshint -W054 */
 	var fn = new Function(
@@ -829,6 +871,21 @@ ASTCompiler.prototype.compile = function(text) {
 	fn.literal = this.isLiteral(ast);
 	fn.constant = ast.constant;
 	return fn;
+};
+
+ASTCompiler.prototype.watchFns = function() {
+	var result = [];
+	var self = this;
+	_.forEach(this.state.inputs, function(fnX) {
+		result.push('var ', fnX, ' = function(scope, locals) { ', 
+			(self.state[fnX].vars.length ? 'var ' + self.state[fnX].vars.join(',') + ';' : ''),
+			self.state[fnX].body.join(''),
+		'};');
+	});
+	if(result.length) {
+		result.push(' fn.inputs = [', this.state.inputs.join(','), ']; ')
+	}
+	return result.join('');
 };
 
 ASTCompiler.prototype.recurse = function(ast, context, create) {
@@ -1253,10 +1310,11 @@ ASTCompiler.prototype.markConstantExpressions = function(ast) {
 
 //-------------------- Parser 
 
-function Parser(lexer) {
+function Parser(lexer, verbose) {
 	this.lexer = lexer;
 	this.ast = new AST(this.lexer);
 	this.astCompiler = new ASTCompiler(this.ast);
+	this.astCompiler.setVerbose(verbose);
 }
 
 Parser.prototype.parse = function(text) {

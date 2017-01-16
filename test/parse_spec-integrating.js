@@ -318,6 +318,10 @@ describe("parse", function(){
 			expect(arr[1]).toEqual([1,2,10]);
 		});
 
+		it('testing toWatch', function() {
+			expect(parse('[a,b,c]', true)({a: 1, b:2})).toEqual(3);
+		});
+
 	});
 	
 });
