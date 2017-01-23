@@ -26,9 +26,14 @@ function setupModuleLoader(window) {
 		if(name === 'hasOwnProperty') {
 			throw 'module name : \"hasOwnProperty\" is not permited.';
 		}
+		var invokeQueue = [];
 		var moduleInstance = {
 			name: name,
 			requires: requires,
+			constant: function(key, value) {
+				invokeQueue.push(['constant', [key, value]]);
+			},
+			_invokeQueue: invokeQueue,
 		};
 
 		modules[name] = moduleInstance;
