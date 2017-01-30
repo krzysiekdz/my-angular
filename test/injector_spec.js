@@ -46,6 +46,36 @@ describe('injector', function() {
 		expect(injector.get('a')).toBe(13);
 	});
 
+	it('loads the required modules of a module', function() {
+		var module1 = angular.module('mod1', []);
+		var module2 = angular.module('mod2', ['mod1']);
+		module1.constant('a', 13);
+		module2.constant('b', 14);
+		var injector = createInjector(['mod2']);
+		expect(injector.get('a')).toBe(13);
+		expect(injector.get('b')).toBe(14);
+	});
+
+	it('loads the required modules of a module in any deep', function() {
+		var module1 = angular.module('mod1', []);
+		var module2 = angular.module('mod2', ['mod1']);
+		var module3 = angular.module('mod3', ['mod2']);
+		module1.constant('a', 13);
+		module2.constant('b', 14);
+		module2.constant('c', 15);
+		var injector = createInjector(['mod3']);
+		expect(injector.get('a')).toBe(13);
+		expect(injector.get('b')).toBe(14);
+		expect(injector.get('c')).toBe(15);
+	});
+
+	it('loads each module only once', function() {
+		angular.module('mod1', ['mod2']);
+		angular.module('mod2', ['mod1']);
+
+		createInjector(['mod2']);
+	});
+
 	
 });
 
