@@ -19,7 +19,11 @@ function createInjector(modulesToLoad) {
 	function invoke (fn) {
 		if(fn.$inject) {
 			var args = _.map(fn.$inject, function(key) {
-				return cache[key];
+				if(_.isString(key)) {
+					return cache[key];
+				} else {
+					throw 'Incorrect injection token! Expected a string, got: (value=' + key + ', type=' + (typeof key) + ')' ;
+				}
 			});
 			return fn.apply(null, args);
 		}
