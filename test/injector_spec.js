@@ -88,7 +88,7 @@ describe('injector', function() {
 		expect(injector.invoke(fn)).toBe(21);
 	});
 
-	it('does not accept non-strings as injection tokes', function() {
+	it('does not accept non-strings as injection tokens', function() {
 		var module = angular.module('mod1', []);
 		module.constant('a', 10);
 		module.constant('b', 11);
@@ -101,6 +101,166 @@ describe('injector', function() {
 		expect(function() {injector.invoke(fn);}).toThrow();
 	});
 
+	it('binding this in DI', function() {
+		var module = angular.module('mod1', []);
+		module.constant('a', 10);
+		var injector = createInjector(['mod1']);
+
+		var obj = {
+			b: 11,
+			fn : function(one){return one+this.b;}
+		};
+		obj.fn.$inject = ['a'];
+		
+		expect(injector.invoke(obj.fn, obj)).toBe(21);
+	});
+
+	it('override dependencies with locals when invoking', function() {
+		var module = angular.module('mod1', []);
+		module.constant('a', 10);
+		module.constant('b', 20);
+		var injector = createInjector(['mod1']);
+
+		var fn = function(one, two){ return one + two; }
+		fn.$inject = ['a', 'b'];
+		
+		expect(injector.invoke(fn, {}, {b:4})).toBe(14);
+	});
+
+	it('throws when using non-annotated in strict mode', function() {
+		var injector = createInjector([], true);
+		var fn = function(a,b,c){};
+
+		expect(function() {
+			injector.annotate(fn);
+		}).toThrow();
+	});
+
+	it('invokes a non-annotated function with DI', function() {
+		var module = angular.module('mod1', []);
+		module.constant('a', 10);
+		module.constant('b', 11);
+		var injector = createInjector(['mod1']);
+
+		var fn = function(a, b){return a+b;}
+
+		expect(injector.invoke(fn)).toEqual(21);
+	});
+
+	it('invokes an array annotated function with DI', function() {
+		var module = angular.module('mod1', []);
+		module.constant('a', 10);
+		module.constant('b', 11);
+		var injector = createInjector(['mod1']);
+
+		var fn = ['a', 'b',  function(a, b){return a+b;}];
+
+		expect(injector.invoke(fn)).toEqual(21);
+	});
+
+	it('instantiates an annotated constructor function', function() {
+		var module = angular.module('mod1', []);
+		module.constant('a', 10);
+		module.constant('b', 11);
+		var injector = createInjector(['mod1']);
+
+		var Type = function(a, b) {
+			this.result = a + b;
+		};
+		var obj = injector.instantiate(Type);
+		expect(obj.result).toEqual(21);
+	});
+
+	it('uses the prototype of construcotor when instantiating', function() {
+		var injector = createInjector([]);
+		var Type = function() {};
+		Type.prototype.getValue = 32;
+
+		var Type2 = function(){
+			this.value = this.getValue;
+		};
+		Type2.prototype = Type.prototype;
+
+		var obj = injector.instantiate(Type2);
+		expect(obj.value).toEqual(32);
+	});
+
+	it('support locals when instantiating', function() {
+		var module = angular.module('mod1', []);
+		module.constant('a', 10);
+		module.constant('b', 11);
+		var injector = createInjector(['mod1']);
+
+		var Type = function(a, b) {
+			this.result = a + b;
+		};
+		var obj = injector.instantiate(Type, {b:1});
+		expect(obj.result).toEqual(11);
+	});
+
 	
+});
+
+
+describe('annotate', function() {
+
+	it('returns the $inject annotation of a function when it has one', function() {
+		var injector = createInjector([]);
+		var fn = function(){};
+		fn.$inject=['a','b'];
+
+		expect(injector.annotate(fn)).toEqual(['a', 'b']);
+	});
+
+	it('returns the array-style annotations of a function', function() {
+		var injector = createInjector([]);
+		var fn = ['a', 'b', function(){}];
+
+		expect(injector.annotate(fn)).toEqual(['a', 'b']);
+	});
+
+	it('returns an empty array for a non-annotated 0-arg function', function() {
+		var injector = createInjector([]);
+		var fn = function(){};
+
+		expect(injector.annotate(fn)).toEqual([]);
+	});
+
+	it('returns annotations parsed from function args when non annotated', function() {
+		var injector = createInjector([]);
+		var fn = function(a,b,c){};
+
+		expect(injector.annotate(fn)).toEqual(['a', 'b', 'c']);
+	});
+
+	it('strips comments from arguments list', function() {
+		var injector = createInjector([]);
+		var fn = function(a,b /*ala*/ ,c){};
+
+		expect(injector.annotate(fn)).toEqual(['a', 'b', 'c']);
+	});
+
+	it('strips several comments from arguments list', function() {
+		var injector = createInjector([]);
+		var fn = function(a,b /*ala*/ ,c /*ola*/){};
+
+		expect(injector.annotate(fn)).toEqual(['a', 'b', 'c']);
+	});
+
+	it('strips // comments from arguments list', function() {
+		var injector = createInjector([]);
+		var fn = function(a,b //ala
+			,c){};
+
+		expect(injector.annotate(fn)).toEqual(['a', 'b', 'c']);
+	});
+
+	it('strips surrounding underscores from arguments names', function() {
+		var injector = createInjector([]);
+		var fn = function(a, _b_, _c, d_){};
+
+		expect(injector.annotate(fn)).toEqual(['a', 'b', '_c', 'd_']);
+	});
+
 });
 
