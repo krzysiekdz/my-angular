@@ -266,6 +266,11 @@ describe('annotate', function() {
 
 describe('provider', function() {
 
+	beforeEach(function() {
+		delete window.angular;
+		setupModuleLoader(window);
+	});
+
 	it('allows registering provider', function() {
 		var module = angular.module('mod1', []);
 		module.provider('a', {$get: function() {return 34;}});
@@ -280,6 +285,22 @@ describe('provider', function() {
 		module.provider('b', {$get: function(a) {return 2*a;}});
 		var injector = createInjector(['mod1']);
 		expect(injector.get('b')).toEqual(6);
+	});
+
+	it('lazy instantiation of dependencies', function() {
+		var module = angular.module('mod1', []);
+		module.provider('b', {$get: function(a) {return 2*a;}});
+		module.constant('a', 4);
+		var injector = createInjector(['mod1']);
+		expect(injector.get('b')).toEqual(8);
+	});
+
+	it('instantiantes dependency only once', function() {
+		var module = angular.module('mod1', []);
+		module.provider('b', {$get: function(a) {return  {a:a}; }});
+		module.constant('a', 4);
+		var injector = createInjector(['mod1']);
+		expect(injector.get('b')).toBe(injector.get('b'));
 	});
 
 });
