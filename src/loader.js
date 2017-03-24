@@ -26,13 +26,20 @@ function setupModuleLoader(window) {
 		if(name === 'hasOwnProperty') {
 			throw 'module name : \"hasOwnProperty\" is not permited.';
 		}
+		
 		var invokeQueue = [];
+
+		function invokeLater(method) {
+			return function() {
+				invokeQueue.push([method, arguments]);
+			};
+		}
+
 		var moduleInstance = {
 			name: name,
 			requires: requires,
-			constant: function(key, value) {
-				invokeQueue.push(['constant', [key, value]]);
-			},
+			constant: invokeLater('constant'),
+			provider: invokeLater('provider'),
 			_invokeQueue: invokeQueue,
 		};
 
@@ -40,6 +47,8 @@ function setupModuleLoader(window) {
 
 		return moduleInstance;
 	}
+
+	
 
 	function gotModule(name, modules) {
 		if(modules.hasOwnProperty(name)) {

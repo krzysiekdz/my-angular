@@ -264,3 +264,13 @@ describe('annotate', function() {
 
 });
 
+describe('provider', function() {
+	it('allows registering provider', function() {
+		var module = angular.module('mod1', []);
+		module.provider('a', {$get: function() {return 34;}});
+		var injector = createInjector(['mod1']);
+		expect(injector.has('a')).toBe(true);
+		expect(injector.get('a')).toEqual(34);
+	});
+});
+

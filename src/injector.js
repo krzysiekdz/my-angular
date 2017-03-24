@@ -19,6 +19,9 @@ function createInjector(modulesToLoad, strictDi) {
 			}
 			cache[key] = value;
 		},
+		provider: function(key, provider) {
+			cache[key] = provider.$get();
+		},
 	};
 
 	function invoke (fn, thisObj, locals) {
