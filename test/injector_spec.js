@@ -265,6 +265,7 @@ describe('annotate', function() {
 });
 
 describe('provider', function() {
+
 	it('allows registering provider', function() {
 		var module = angular.module('mod1', []);
 		module.provider('a', {$get: function() {return 34;}});
@@ -272,5 +273,14 @@ describe('provider', function() {
 		expect(injector.has('a')).toBe(true);
 		expect(injector.get('a')).toEqual(34);
 	});
+
+	it('inject to the $get method of provider', function() {
+		var module = angular.module('mod1', []);
+		module.constant('a', 3);
+		module.provider('b', {$get: function(a) {return 2*a;}});
+		var injector = createInjector(['mod1']);
+		expect(injector.get('b')).toEqual(6);
+	});
+
 });
 
