@@ -359,5 +359,65 @@ describe('provider', function() {
 		expect(injector.get('a')).toEqual(8);
 	});
 
+	it('does not inject an instance to a provider construction function', function() {
+		var module = angular.module('mod1', []);
+		module.provider('a', function() {
+			this.$get = function() {return 13;};
+		});
+		module.provider('b', function(a) {
+			this.$get = function(){return a;};
+		});
+		
+		expect(function() {
+			createInjector(['mod1'])
+		}).toThrow();
+		
+	});
+
+	it('does not inject a provider to $get function', function() {
+		var module = angular.module('mod1', []);
+		module.provider('a', function() {
+			this.$get = function() {return 13;};
+		});
+		module.provider('b', function() {
+			this.$get = function(aProvider){return aProvider.$get();};
+		});
+		
+		var injector = createInjector(['mod1']);		
+
+		expect(function() {
+			injector.get('b');
+		}).toThrow();
+		
+	});
+
+	it('does not inject a provider to invoke function', function() {
+		var module = angular.module('mod1', []);
+		module.provider('a', function() {
+			this.$get = function() {return 13;};
+		});
+		
+		var injector = createInjector(['mod1']);
+
+		expect(function() {
+			injector.invoke(function(aProvider) {});
+		}).toThrow();
+		
+	});
+
+	it('does not give access to provider through get', function() {
+		var module = angular.module('mod1', []);
+		module.provider('a', function() {
+			this.$get = function() {return 13;};
+		});
+		
+		var injector = createInjector(['mod1']);
+
+		expect(function() {
+			injector.get('aProvider');
+		}).toThrow();
+		
+	});
+
 });
 
