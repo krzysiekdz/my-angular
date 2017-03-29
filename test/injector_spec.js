@@ -323,5 +323,41 @@ describe('provider', function() {
 		expect(function() {injector.get('a');}).toThrow('Failing instantiation!');
 	});
 
+	it('instantiantes a provider if given a constructor function', function() {
+		var module = angular.module('mod1', []);
+		module.provider('b', function() {
+			this.$get = function() {return 12;};
+		});
+		
+		var injector = createInjector(['mod1']);
+		expect(injector.get('b')).toEqual(12);
+	});
+
+	it('instantiantes a provider if given a constructor function', function() {
+		var module = angular.module('mod1', []);
+		module.constant('a', 5);
+		module.provider('b', function(a) { //provider is instantiated when the incjector is created, so dependencies must exists! 
+			this.$get = function() {return 2*a;};//if used dependencies here, lazy initialization will work, upper will not work
+		});
+		var injector = createInjector(['mod1']);
+		expect(injector.get('b')).toEqual(10);
+	});
+
+	it('injects another provider to a provider constructor', function() {
+		var module = angular.module('mod1', []);
+		module.provider('a', function() {
+			var value = 0;
+			this.setValue = function(v) {value = v;};
+			this.$get = function() {return value;};
+		});
+		module.provider('b', function(aProvider) {
+			aProvider.setValue(8);
+			this.$get = function(){};
+		});
+		
+		var injector = createInjector(['mod1']);
+		expect(injector.get('a')).toEqual(8);
+	});
+
 });
 
