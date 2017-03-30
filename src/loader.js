@@ -30,6 +30,12 @@ function setupModuleLoader(window) {
 		var invokeQueue = [];
 
 		function invokeLater(method) {
+			if(method === 'constant') {
+				return function() {
+					invokeQueue.unshift([method, arguments]);
+				}
+			}
+			
 			return function() {
 				invokeQueue.push([method, arguments]);
 			};

@@ -419,5 +419,18 @@ describe('provider', function() {
 		
 	});
 
+	it('unshifts constants before providers', function() {
+		var module = angular.module('mod1', []);
+		module.provider('a', function(b) {
+			this.$get = function() {return b+1;};
+		});
+		module.constant('b', 18);
+		
+		var injector = createInjector(['mod1']);
+
+		expect(injector.get('a')).toEqual(19);
+		
+	});
+
 });
 

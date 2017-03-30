@@ -56,8 +56,6 @@ function createInjector(modulesToLoad, strictDi) {
 	});
 
 	
-
-
 	function createInternalInjector(cache, factoryFn) {
 		var path = [];
 
@@ -123,11 +121,7 @@ function createInjector(modulesToLoad, strictDi) {
 			instantiate: instantiate,
 		};
 
-
-
 	}
-
-	
 
 	function annotate(fn) {
 		if(fn.$inject) {
@@ -161,7 +155,6 @@ function createInjector(modulesToLoad, strictDi) {
 	}
 
 	
-
 	
 
 	return instanceInjector;
