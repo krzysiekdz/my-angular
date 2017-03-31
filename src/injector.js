@@ -21,8 +21,10 @@ function createInjector(modulesToLoad, strictDi) {
 		} else {
 			throw 'no provider for depenedency: ' + key + ' !';
 		}
-
 	});
+
+	instanceCache.$injector = instanceInjector;	 
+	providerCache.$injector = providerInjector;	 
 
 	var $provide = {
 		constant: function(key, value) {

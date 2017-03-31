@@ -434,3 +434,38 @@ describe('provider', function() {
 
 });
 
+describe('injector-chapter-12', function() {
+
+	it('allows injecting the instance injector to $get', function() {
+		var module = angular.module('mod1', []);
+		module.constant('a', 1);
+		module.provider('b', function() {
+			this.$get = function($injector) {
+				return $injector.get('a');
+			};
+		});
+		var injector = createInjector(['mod1']);
+		expect(injector.get('b')).toEqual(1);
+	});
+
+	it('allows injecting the provider injector to provider', function() {
+		var module = angular.module('mod1', []);
+		module.provider('a', function() {
+			this.value = 5;
+			this.$get = function() {
+				return this.value;
+			}
+		});
+		module.provider('b', function($injector) {
+			var apro = $injector.get('aProvider');
+			this.$get = function() {
+				return apro.value;
+			};
+		});
+		var injector = createInjector(['mod1']);
+		expect(injector.get('b')).toEqual(5);
+	});
+
+	
+
+});
