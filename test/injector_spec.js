@@ -466,6 +466,37 @@ describe('injector-chapter-12', function() {
 		expect(injector.get('b')).toEqual(5);
 	});
 
+	it('allows injecting the $provide to provider', function() {
+		var module = angular.module('mod1', []);
+		module.provider('b', function($provide) {
+			$provide.constant('a', 18);
+			this.$get = function($injector) {
+				return $injector.get('a');
+			};
+		});
+		var injector = createInjector(['mod1']);
+		expect(injector.get('b')).toEqual(18);
+	});
+
+	it('does not allow injecting the $provide to $get', function() {
+		var module = angular.module('mod1', []);
+		module.provider('b', function() {
+			this.$get = function($provide) {
+				return 25;
+			};
+		});
+		var injector = createInjector(['mod1']);
+		// try {
+		// 	injector.get('b');
+		// } catch(e) {
+		// 	console.log(e);
+		// } //no provider for dependency: $provide !
+		expect(function() {
+			injector.get('b');
+		}).toThrow();
+
+	});
+
 	
 
 });

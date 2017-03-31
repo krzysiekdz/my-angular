@@ -42,6 +42,8 @@ function createInjector(modulesToLoad, strictDi) {
 		},
 	};
 
+	providerCache.$provide = $provide;
+
 	_.forEach(modulesToLoad, function loadModules(moduleName) {
 		if(!loadedModules.hasOwnProperty(moduleName)) {
 			loadedModules[moduleName] = true;
