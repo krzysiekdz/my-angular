@@ -40,10 +40,22 @@ function createInjector(modulesToLoad, strictDi) {
 			}
 			providerCache[key + 'Provider'] = provider;
 		},
+		config: function(configFn) {
+			providerInjector.invoke(configFn, $provide);
+		}
 	};
 
 	providerCache.$provide = $provide;
 
+	function runInvokeQueue(queue) {
+		_.forEach(queue, function(invokeArgs) {
+			var method = invokeArgs[0];
+			var args = invokeArgs[1];
+			$provide[method].apply($provide, args);
+		});
+	}
+
+	// var configBlocks = [];
 	_.forEach(modulesToLoad, function loadModules(moduleName) {
 		if(!loadedModules.hasOwnProperty(moduleName)) {
 			loadedModules[moduleName] = true;
@@ -51,13 +63,16 @@ function createInjector(modulesToLoad, strictDi) {
 			if(module.requires.length > 0) {
 				_.forEach(module.requires, loadModules);
 			}
-			_.forEach(module._invokeQueue, function(invokeArgs) {
-				var method = invokeArgs[0];
-				var args = invokeArgs[1];
-				$provide[method].apply($provide, args);
-			});
+			runInvokeQueue(module._invokeQueue);
+			runInvokeQueue(module._configBlocks);
+			// configBlocks.push(module._configBlocks);
 		}
 	});
+
+	// _.forEach(configBlocks, function(configBlock) {
+	// 	runInvokeQueue(configBlock);	
+	// });
+	
 
 	
 	function createInternalInjector(cache, factoryFn) {

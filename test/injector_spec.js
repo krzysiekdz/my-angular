@@ -497,6 +497,47 @@ describe('injector-chapter-12', function() {
 
 	});
 
+	it('run config block when the injector is created', function() {
+		var module = angular.module('mod1', []);
+		var hasConfig = false;
+		module.config(function() {
+			hasConfig = true;
+		});
+		var injector = createInjector(['mod1']);
+		expect(hasConfig).toEqual(true);
+	});
+
+	it('injects config block with provider', function() {
+		var module = angular.module('mod1', []);
+		
+		module.config(function($provide) {
+			$provide.constant('a', 13);
+		});
+		var injector = createInjector(['mod1']);
+		expect(injector.get('a')).toEqual(13);
+	});
+
+	it('allows registering config blocks before providers', function() {
+		var module = angular.module('mod1', []);
+		
+		module.config(function(aProvider) {
+		});
+		module.provider('a', function(){
+			this.$get = function(){return 2;}
+		})
+
+		var injector = createInjector(['mod1']);
+	});
+
+	it('add config block added during module registration', function() {
+		var module = angular.module('mod1', [], function($provide) {
+			$provide.constant('a', 5);
+		});
+		
+		var injector = createInjector(['mod1']);
+		expect(injector.get('a')).toEqual(5);
+	});
+
 	
 
 });
