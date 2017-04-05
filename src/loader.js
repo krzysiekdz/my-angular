@@ -29,31 +29,27 @@ function setupModuleLoader(window) {
 		
 		var invokeQueue = [];
 		var configBlocks = [];
+		var runBlocks = [];
 
-		function invokeLater(method) {
-			if(method === 'constant') {
-				return function() {
-					invokeQueue.unshift([method, arguments]);
-				}
-			} else if (method === 'config') {
-				return function() {
-					configBlocks.push([method, arguments]);
-				}
-			}
-			
+		function invokeLater(method, arrayFn, queue) {
+			var q = queue || invokeQueue;
+			var fn = arrayFn || 'push';
+
 			return function() {
-				invokeQueue.push([method, arguments]);
+				q[fn]([method, arguments]);
 			};
 		}
 
 		var moduleInstance = {
 			name: name,
 			requires: requires,
-			constant: invokeLater('constant'),
+			constant: invokeLater('constant', 'unshift'),
 			provider: invokeLater('provider'),
-			config: invokeLater('config'),
+			config: invokeLater('config', null, configBlocks),
+			run: invokeLater('run', null, runBlocks),
 			_invokeQueue: invokeQueue,
 			_configBlocks: configBlocks,
+			_runBlocks: runBlocks,
 		};
 
 		if(_.isFunction(configFn)) {

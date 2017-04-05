@@ -538,6 +538,73 @@ describe('injector-chapter-12', function() {
 		expect(injector.get('a')).toEqual(5);
 	});
 
+	it('runs run blocks when the injector is created', function() {
+		var module = angular.module('mod1', []);
+		var hasRun = false;
+		module.run(function() {
+			hasRun = true;
+		});
+		var injector = createInjector(['mod1']);
+		expect(hasRun).toEqual(true);
+	});
+
+
+	it('injects run blocks with instance injector', function() {
+		var module = angular.module('mod1', []);
+		
+		module.provider('a', function() {
+			this.$get = function() {
+				return 8;
+			}
+		});
+		var aa = 0;
+		module.run(function(a) {
+			aa = a;
+		});
+		var injector = createInjector(['mod1']);
+		expect(aa).toEqual(8);
+	});
+
+	it('runs a function module dependency as a config block', function() {
+		function fnModule($provide) {	
+			$provide.constant('a', 4);
+		}
+		var module = angular.module('mod1', [fnModule]);
+		var injector = createInjector(['mod1']);
+		expect(injector.get('a')).toEqual(4);
+	});
+
+	it('runs a function module with array injection as a config block', function() {
+		var fnModule = ['$provide', function (p) {	
+			p.constant('a', 4);
+		}];
+		var module = angular.module('mod1', [fnModule]);
+		var injector = createInjector(['mod1']);
+		expect(injector.get('a')).toEqual(4);
+	});
+
+	it('supports returning a run block from a function module', function() {
+		var aa = 0;
+		function fnModule($provide) {	
+			$provide.constant('a', 6);
+			return function(a) {
+				aa = a;
+			}
+		}
+		var module = angular.module('mod1', [fnModule]);
+		var injector = createInjector(['mod1']);
+		expect(aa).toEqual(6);
+	});
+
+	it('only loads function modules once', function() {
+		var ctr = 0;
+		function fnModule($provide) {	
+			ctr++;
+		}
+		var module = angular.module('mod1', [fnModule, fnModule]);
+		var injector = createInjector(['mod1']);
+		expect(ctr).toEqual(1);
+	});
 	
 
 });

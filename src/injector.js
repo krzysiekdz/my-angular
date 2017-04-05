@@ -42,7 +42,10 @@ function createInjector(modulesToLoad, strictDi) {
 		},
 		config: function(configFn) {
 			providerInjector.invoke(configFn, $provide);
-		}
+		}, 
+		run: function(runFn) {
+			instanceInjector.invoke(runFn, $provide);
+		},
 	};
 
 	providerCache.$provide = $provide;
@@ -55,23 +58,28 @@ function createInjector(modulesToLoad, strictDi) {
 		});
 	}
 
-	// var configBlocks = [];
+	var runBlocks = [];
 	_.forEach(modulesToLoad, function loadModules(moduleName) {
-		if(!loadedModules.hasOwnProperty(moduleName)) {
-			loadedModules[moduleName] = true;
-			var module = angular.module(moduleName);
-			if(module.requires.length > 0) {
-				_.forEach(module.requires, loadModules);
+		if(_.isString(moduleName)) {
+			if(!loadedModules.hasOwnProperty(moduleName)) {
+				loadedModules[moduleName] = true;
+				var module = angular.module(moduleName);
+				if(module.requires.length > 0) {
+					_.forEach(module.requires, loadModules);
+				}
+				runInvokeQueue(module._invokeQueue);
+				runInvokeQueue(module._configBlocks);
+				runBlocks = runBlocks.concat(module._runBlocks);
 			}
-			runInvokeQueue(module._invokeQueue);
-			runInvokeQueue(module._configBlocks);
-			// configBlocks.push(module._configBlocks);
+		} else if (_.isArray(moduleName) || _.isFunction(moduleName)) {
+			var runFn = providerInjector.invoke(moduleName) ;
+			if(_.isFunction(runFn)) {
+				runBlocks.push(['run', [runFn]]);
+			}
 		}
 	});
 
-	// _.forEach(configBlocks, function(configBlock) {
-	// 	runInvokeQueue(configBlock);	
-	// });
+	runInvokeQueue(runBlocks);
 	
 
 	
