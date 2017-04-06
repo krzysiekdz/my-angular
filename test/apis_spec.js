@@ -106,9 +106,29 @@ describe('apis', function() {
 			hashMap = new HashMap();
 		});
 
-		it('supports put ang get methods', function() {
+		it('supports put ang get methods of primitives', function() {
 			hashMap.put(11, 'eleven');
 			expect(hashMap.get(11)).toEqual('eleven');
+		});
+
+		it('supports put ang get methods of objects', function() {
+			var obj = {};
+			hashMap.put(obj, 'obj');
+			expect(hashMap.get(obj)).toEqual('obj');
+			expect(hashMap.get({})).toBeUndefined();
+		});
+
+		it('supports remove', function() {
+			var obj = {};
+			hashMap.put(obj, 'obj');
+			hashMap.remove(obj);
+			expect(hashMap.get(obj)).toBeUndefined();
+		});
+
+		it('returns remove value', function() {
+			var obj = {};
+			hashMap.put(obj, 'obj');
+			expect(hashMap.remove(obj)).toEqual('obj');
 		});
 
 	});

@@ -18,15 +18,20 @@ function hashKey(value) {
 }
 
 function HashMap() {
-	this.hashMap = {};
 }
 
 HashMap.prototype = {
 	constructor: HashMap, 
 	get: function(key) {
-		return this.hashMap[key];
+		return this[hashKey(key)];
 	}, 
 	put: function(key, value) {
-		this.hashMap[key] = value;
+		this[hashKey(key)] = value;
 	},
+	remove: function(key) {
+		var hash = hashKey(key);
+		var value = this[hash];
+		delete this[hash];
+		return value;
+	}
 }
