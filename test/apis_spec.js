@@ -76,14 +76,42 @@ describe('apis', function() {
 
 		it('stores the hash key in the $$hashKey attribute', function() {
 			var obj = {};
-			hashKey(obj);
-			expect(obj.$$hashKey).toMatch(/^object:\S+$/);
+			var hash = hashKey(obj);
+			expect(obj.$$hashKey).toEqual(hash.match(/^object:(\S+)$/)[1]);
+			// console.log(hash.match(/^object:(\S+)$/)[1]);
 		});
 
 		it('uses preassigned $$hashKey', function() {
 			expect(hashKey({$$hashKey: 23})).toEqual('object:23');
 		});
 
+		it('supports a function $$hashKey', function() {
+			expect(hashKey({$$hashKey: function(){return 12;} })).toEqual('object:12');
+		});
+
+		it('supports this in a function $$hashKey', function() {
+			expect(hashKey({
+				key: 23,
+				$$hashKey: function(){return this.key;} 
+			})).toEqual('object:23');
+		});
+
+	});
+
+	describe('HashMap', function() {
+
+		var hashMap;
+
+		beforeEach(function() {
+			hashMap = new HashMap();
+		});
+
+		it('supports put ang get methods', function() {
+			hashMap.put(11, 'eleven');
+			expect(hashMap.get(11)).toEqual('eleven');
+		});
+
 	});
 
 });
+
