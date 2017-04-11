@@ -605,6 +605,38 @@ describe('injector-chapter-12', function() {
 		var injector = createInjector(['mod1']);
 		expect(ctr).toEqual(1);
 	});
+
+	it('allows registering a factory', function() {
+		var module = angular.module('mod1', []);
+		module.factory('a', function() {return 2;});
+		var injector = createInjector(['mod1']);
+		expect(injector.get('a')).toEqual(2);
+	});
+
+	it('injects a factory functions with instances', function() {
+		var module = angular.module('mod1', []);
+		module.factory('a', function() {return 2;});
+		module.factory('b', function(a) {return a + 1;});
+		var injector = createInjector(['mod1']);
+		expect(injector.get('b')).toEqual(3);
+	});
 	
+	it('calls factory function only once', function() {
+		var module = angular.module('mod1', []);
+		module.factory('a', function() {return {};});
+		var injector = createInjector(['mod1']);
+		expect(injector.get('a')).toEqual(injector.get('a'));
+	});
+
+	it('enforces factory to return a value', function() {
+		var module = angular.module('mod1', []);
+		module.factory('a', function() {});
+		module.factory('b', function() {return null;});
+		var injector = createInjector(['mod1']);
+		expect(function() {
+			injector.get('a');
+		}).toThrow();
+		expect(injector.get('b')).toBeNull();
+	});
 
 });

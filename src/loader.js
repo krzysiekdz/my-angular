@@ -47,6 +47,7 @@ function setupModuleLoader(window) {
 			provider: invokeLater('provider'),
 			config: invokeLater('config', null, configBlocks),
 			run: invokeLater('run', null, runBlocks),
+			factory: invokeLater('factory'),
 			_invokeQueue: invokeQueue,
 			_configBlocks: configBlocks,
 			_runBlocks: runBlocks,

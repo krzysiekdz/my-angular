@@ -9,7 +9,7 @@ var INSTANTIATING = {};
 
 function createInjector(modulesToLoad, strictDi) {
 
-	var loadedModules = {};
+	var loadedModules = new HashMap();
 	strictDi = (strictDi === true);
 
 	var instanceCache = {};
@@ -25,6 +25,16 @@ function createInjector(modulesToLoad, strictDi) {
 
 	instanceCache.$injector = instanceInjector;	 
 	providerCache.$injector = providerInjector;	 
+
+	function enforceReturnValue(fn) {
+		return function() {
+			var ret = instanceInjector.invoke(fn); //invoking fn in instanceCache context manually, because we want to check return value
+			if(_.isUndefined(ret)) {
+				throw 'factory must return a value!';
+			}
+			return ret;
+		};
+	}
 
 	var $provide = {
 		constant: function(key, value) {
@@ -46,6 +56,9 @@ function createInjector(modulesToLoad, strictDi) {
 		run: function(runFn) {
 			instanceInjector.invoke(runFn, $provide);
 		},
+		factory: function(key, factoryFn) {
+			this.provider(key, {$get: enforceReturnValue(factoryFn)});
+		}
 	};
 
 	providerCache.$provide = $provide;
@@ -60,9 +73,11 @@ function createInjector(modulesToLoad, strictDi) {
 
 	var runBlocks = [];
 	_.forEach(modulesToLoad, function loadModules(moduleName) {
-		if(_.isString(moduleName)) {
-			if(!loadedModules.hasOwnProperty(moduleName)) {
-				loadedModules[moduleName] = true;
+
+		if(!loadedModules.get(moduleName)) {
+			loadedModules.put(moduleName, true);
+
+			if(_.isString(moduleName)) {
 				var module = angular.module(moduleName);
 				if(module.requires.length > 0) {
 					_.forEach(module.requires, loadModules);
@@ -71,10 +86,11 @@ function createInjector(modulesToLoad, strictDi) {
 				runInvokeQueue(module._configBlocks);
 				runBlocks = runBlocks.concat(module._runBlocks);
 			}
-		} else if (_.isArray(moduleName) || _.isFunction(moduleName)) {
-			var runFn = providerInjector.invoke(moduleName) ;
-			if(_.isFunction(runFn)) {
-				runBlocks.push(['run', [runFn]]);
+			else if (_.isArray(moduleName) || _.isFunction(moduleName)) {
+				var runFn = providerInjector.invoke(moduleName) ;
+				if(_.isFunction(runFn)) {
+					runBlocks.push(['run', [runFn]]);
+				}
 			}
 		}
 	});
