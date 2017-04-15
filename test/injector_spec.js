@@ -606,6 +606,8 @@ describe('injector-chapter-12', function() {
 		expect(ctr).toEqual(1);
 	});
 
+	// ----------------- factories
+
 	it('allows registering a factory', function() {
 		var module = angular.module('mod1', []);
 		module.factory('a', function() {return 2;});
@@ -637,6 +639,103 @@ describe('injector-chapter-12', function() {
 			injector.get('a');
 		}).toThrow();
 		expect(injector.get('b')).toBeNull();
+	});
+
+	//---------- values
+
+	it('allows registering a value', function() {
+		var module = angular.module('mod1', []);
+		module.value('a', 23);
+		var injector = createInjector(['mod1']);
+		expect(injector.get('a')).toEqual(23);
+	});
+
+	it('does not make values available to config blocks', function() {
+		var module = angular.module('mod1', []);
+		module.value('a', 24);
+		module.config(function(a) {});
+		expect(function() {
+			createInjector(['mod1'])
+		}).toThrow();
+	});
+
+	it('allows an undefined value', function() {
+		var module = angular.module('mod1', []);
+		module.value('a', undefined);
+		var injector = createInjector(['mod1']);
+		expect(injector.get('a')).toBeUndefined();
+	});
+
+
+	//---------- services
+
+	it('allows registering a service', function() {
+		var module = angular.module('mod1', []);
+		module.service('aService', function(){
+			this.getVal = function(){return 15;}
+		});
+		var injector = createInjector(['mod1']);
+		expect(injector.get('aService').getVal()).toEqual(15);
+	});
+
+	it('injects service constructors with instances', function() {
+		var module = angular.module('mod1', []);
+		module.value('a', 5);
+		module.service('aService', function(a){
+			this.getVal = function(){return a;}
+		});
+		var injector = createInjector(['mod1']);
+		expect(injector.get('aService').getVal()).toEqual(5);
+	});
+
+	it('calls service function only once', function() {
+		var module = angular.module('mod1', []);
+		module.service('a', function() {});
+		var injector = createInjector(['mod1']);
+		expect(injector.get('a')).toEqual(injector.get('a'));
+	});
+
+	//-------- decorators
+
+	it('allows changing an instance using decorator', function() {
+		var module = angular.module('mod1', []);
+		module.factory('aValue', function() {
+			return {aKey: 12};
+		});
+		module.decorator('aValue', function($delegate) {
+			$delegate.bKey = 13;
+		});
+		var injector = createInjector(['mod1']);
+		expect(injector.get('aValue').bKey).toEqual(13);
+	});
+
+	it('allows multiple decorators per service', function() {
+		var module = angular.module('mod1', []);
+		module.factory('aValue', function() {
+			return {aKey: 12};
+		});
+		module.decorator('aValue', function($delegate) {
+			$delegate.bKey = 13;
+		});
+		module.decorator('aValue', function($delegate) {
+			$delegate.cKey = 14;
+		});
+		var injector = createInjector(['mod1']);
+		expect(injector.get('aValue').bKey).toEqual(13);
+		expect(injector.get('aValue').cKey).toEqual(14);
+	});
+
+	it('uses dependency injection with decorators', function() {
+		var module = angular.module('mod1', []);
+		module.constant('a', 5);
+		module.factory('aValue', function() {
+			return {aKey: 12};
+		});
+		module.decorator('aValue', function($delegate, a) {
+			$delegate.bKey = a;
+		});
+		var injector = createInjector(['mod1']);
+		expect(injector.get('aValue').bKey).toEqual(5);
 	});
 
 });

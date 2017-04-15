@@ -56,8 +56,27 @@ function createInjector(modulesToLoad, strictDi) {
 		run: function(runFn) {
 			instanceInjector.invoke(runFn, $provide);
 		},
-		factory: function(key, factoryFn) {
-			this.provider(key, {$get: enforceReturnValue(factoryFn)});
+		factory: function(key, factoryFn, enforce) { //factory is a ready to use simple provider object with $get method only
+			this.provider(key, {$get:  enforce === false ? factoryFn : enforceReturnValue(factoryFn)});
+		},
+		value: function(key, value) { //value is also ready to use provider object which returns a value
+			this.factory(key, function() { return value;}, false)
+		}, 
+		service: function(key, serviceConstructor) {
+			// this.provider(key, {$get: function() {
+			// 	return instanceInjector.instantiate(serviceConstructor);
+			// }});
+
+			this.factory(key, function() {
+				return instanceInjector.instantiate(serviceConstructor); //constructing object which $get will return
+			});
+		},
+		decorator: function(key, decoratorFn) {
+			var provider = providerInjector.get(key + 'Provider');
+			if(provider.$$delegates === undefined) {
+				provider.$$delegates = [];
+			}
+			provider.$$delegates.push(decoratorFn);
 		}
 	};
 
@@ -114,6 +133,7 @@ function createInjector(modulesToLoad, strictDi) {
 					path.unshift(key);
 					var provider = factoryFn(key);
 					var instance = cache[key] = invoke(provider.$get, provider);
+					decorate(instance, provider.$$delegates);
 					return instance;
 				} finally {
 					path.shift();
@@ -146,6 +166,14 @@ function createInjector(modulesToLoad, strictDi) {
 			var obj = Object.create(unwrapped.prototype);
 			invoke(fn, obj, locals);
 			return obj;
+		}
+
+		function decorate(instance, delegates) {
+			if(delegates) {
+				_.forEach(delegates, function(delegate) {
+					invoke(delegate, undefined, {$delegate: instance});
+				});
+			}
 		}
 
 		return {
