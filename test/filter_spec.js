@@ -428,3 +428,33 @@ describe("filter", function() {
 	});
 
 });
+
+
+		// var tokens;
+		// var fn;
+		// var expr = "a ";
+		// var scope = {a:10,};
+
+		// register('b', function() {
+		// 	return function(a) {
+		// 		return 2*a;
+		// 	}
+		// });
+
+		// try {
+		// 	ast = new AST(new Lexer());
+		// 	tokens = ast.build(expr);
+		// 	console.log(tokens);
+		// } catch (e) {
+		// 	console.log(e, tokens);
+		// }
+
+		
+		// try {
+		// 	parser = new Parser(new Lexer());
+		// 	fn = parser.parse(expr);
+		// 	console.log(fn.toString());
+		// 	console.log(fn(scope));
+		// } catch (e) {
+		// 	console.log(e, fn.toString());
+		// }

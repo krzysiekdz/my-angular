@@ -849,6 +849,7 @@ ASTCompiler.prototype.compile = function(text) {
 
 	//rebuilding function that we can pass function esnsureSafeMemberName to it and other arguments
 	var resultCode = this.filterPrefix();
+	console.log(resultCode);
 	resultCode += ' var fn = function(scope, locals) {';
 	resultCode += this.state.fn.vars.length? 'var ' +  this.state.fn.vars.join(',') + ';' : '';
 	resultCode += this.state.fn.body.join('');
