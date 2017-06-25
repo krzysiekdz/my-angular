@@ -8,17 +8,19 @@ Architekturę AngularJS można podzielić na kilka głównych komponentów:
 - Scope's - zakresy, dziedziczenie zakresów, reagowanie na zmiany, mechanizm zdarzeń
 - Expressions and Filters - wyrażenia angularjs, filtry
 - Modules and Dependency Injection - moduły i zarządzanie zależnościami
-- Directives - kompilacja DOM, kontrolery
+- Directives - kompilacja DOM, kontrolery, dyrektywy
 - Utilities - obietnice, usluga http
 
 Aktualnie moja implementacja obejmuje pierwsze trzy komponenty.
 
 ### Motywacja
-Jestem w trakcie pisania [pracy magisterskiej](https://github.com/krzysiekdz/mgr-main) na temat wydajności frameworków javascript. Jednym z frameworków jakie będę testował jest angularjs. 
+Jestem w trakcie pisania [pracy magisterskiej](https://github.com/krzysiekdz/mgr-main) na temat wydajności frameworków javascript. Jednym z frameworków jakie testuję jest angularjs. Kierowany ciekawością jak "maszyna" AngularJS działa "pod maską" postanowiłem że napiszę własną implementację. Okazało się to nie łatwym zadaniem. W pewnym momencie napotkałem problemy których nie umiałem sam rozwiązać. Zacząłem jescze bardziej zgłebiać temat, w końcu trafiłem na książke [Build Your Own AngularJS](https://teropa.info/build-your-own-angular/build_your_own_angularjs_sample.pdf) która, jak mówi tytuł, pokazuje jak napisać samemu bibliotekę angularjs. Byłem zafascynowany ! :) Porzuciłem mój mały projekcik i jescze raz krok po kroku, "uzbrojony" tym razem "po zęby" (w książkę) rozpocząłem pracę na projektem "my-angular". 
 
-Chciałem lepiej rozumieć 
+Pracę rozpocząłem we wrześniu 2016 (ale dokumentowanie w git dopiero od listopada 2016). Traktuję to jako zajęcie hobbystyczne, gdyż normalnie głównym zadaniem do zrobienia jest napisanie pracy magisterskiej.
 
 
+### Struktura projektu
+testy jednostkowe - testem, jasmine
 
 old description
 =========
